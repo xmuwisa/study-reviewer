@@ -27,7 +27,7 @@ The product optimizes for:
 
 The initial release includes:
 
-- The hierarchy `Category → Topic → Question & Answer`
+- The hierarchy `Category → Topic → Question & Answer or Term & Definition`
 - Category, topic, and entry CRUD operations
 - Dashboard overview statistics and recently accessed items
 - Search and practical sorting at each content level
@@ -64,8 +64,9 @@ Category
 
 Categories contain topics, and topics contain entries. A category and topic
 have a name, optional description where useful, creation/update timestamps,
-and activity metadata. An entry has a question or term and an answer or
-explanation. Entries do not receive additional hierarchy or metadata in the
+and activity metadata. An entry has a type of Question & Answer or Term &
+Definition, with a left-side question or term and a right-side answer or
+definition. Entries do not receive additional hierarchy or metadata in the
 initial version.
 
 Use stable generated IDs and numeric timestamps. Store categories, topics, and
@@ -175,16 +176,13 @@ the same entries and should not create separate copies of study data.
 
 ### Predictable visibility controls
 
-Questions are visible by default and answers are hidden by default, while the
-user may configure defaults. The controls have separate responsibilities:
+Both List Mode columns are visible by default. The controls have separate
+responsibilities:
 
-- `Show Questions` toggles the question column's visibility.
-- `Show Answers` toggles the answer column's visibility.
-- `Reveal All` reveals every answer cell without changing question-column
-  visibility.
-- `Hide All` hides every answer cell without changing question-column
-  visibility.
-- Clicking an individual answer cell reveals or hides only that cell.
+- `Hide Left` / `Reveal Left` toggles the question or term column.
+- `Hide Right` / `Reveal Right` toggles the answer or definition column.
+- Clicking an individual answer or definition cell reveals or hides only that
+  cell.
 
 These controls must not silently change saved content or confuse column
 visibility with individual answer reveal state.

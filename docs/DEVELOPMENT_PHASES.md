@@ -136,11 +136,13 @@ prefix conventions when creating them.
 **Deliverables**
 
 - Entry create, edit, and delete forms
-- Entry search by question or answer
+- Question & Answer and Term & Definition entry types with safe migration
+- Entry search by question or answer/definition
 - Newest, oldest, and alphabetical sorting
 - Responsive two-column List Mode
-- Show Questions, Show Answers, Reveal All, Hide All, and individual toggles
-- Default visibility preference wiring
+- Question / Term and Answer / Definition column visibility toggles
+- Individual answer reveal/hide controls
+- Both list columns visible by default
 
 **Acceptance criteria**
 
@@ -164,6 +166,9 @@ prefix conventions when creating them.
 **Deliverables**
 
 - One-card question/answer presentation
+- Type-aware front-side defaults and locally saved preferences
+- Question & Answer defaults to Question first; Term & Definition defaults to Definition first
+- Mixed sessions respect each entry's type-specific orientation preference
 - Flip, Previous, Next, position indicator, and optional Shuffle
 - Keyboard and reduced-motion alternatives
 - Position reconciliation after search, sort, shuffle, or deletion

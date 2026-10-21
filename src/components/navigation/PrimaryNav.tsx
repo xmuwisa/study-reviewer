@@ -1,6 +1,9 @@
+import { Menu } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 import { navigationItems } from '@/app/routes'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 export function PrimaryNav() {
@@ -24,5 +27,26 @@ export function PrimaryNav() {
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+export function MobileNav() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button aria-label="Open navigation menu" size="icon" variant="ghost" />}>
+        <Menu aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Navigate</DropdownMenuLabel>
+          {navigationItems.map(({ label, href, icon: Icon, end }) => (
+            <DropdownMenuItem key={href} render={<NavLink to={href} end={end} />}>
+              <Icon aria-hidden="true" />
+              {label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

@@ -139,7 +139,7 @@ export function updateEntry(data: StudyData, entryId: RecordId, input: EntryInpu
   return {
     ...data,
     entries: data.entries.map((entry) =>
-      entry.id === entryId ? { ...entry, question, answer, updatedAt: now } : entry,
+      entry.id === entryId ? { ...entry, type: input.type ?? entry.type, question, answer, updatedAt: now } : entry,
     ),
   }
 }

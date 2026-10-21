@@ -41,7 +41,7 @@ import {
 } from '@/lib/study-operations'
 
 const EMPTY_FORM_VALUES: CollectionFormValues = { name: '', description: '' }
-const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { question: '', answer: '' }
+const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { type: 'question-answer', question: '', answer: '' }
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-base font-medium text-muted-foreground">{children}</p>
@@ -153,7 +153,7 @@ function CountLabel({ count, singular, plural }: { count: number; singular: stri
 
 function EntryActions({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div className="flex shrink-0 items-center gap-0">
+    <div className="flex shrink-0 items-center gap-0" aria-label="Entry actions">
       <Button aria-label={`Edit entry: ${entry.question}`} size="icon-sm" variant="ghost" onClick={onEdit}>
         <Pencil aria-hidden="true" />
       </Button>
@@ -185,24 +185,24 @@ function EntryEmptyState({ hasSearch, onCreate, onClearSearch }: { hasSearch: bo
 
 function EntryList({
   entries,
-  showQuestions,
-  showAnswers,
+  showLeft,
+  showRight,
   revealedAnswers,
   onToggleAnswer,
   onEdit,
   onDelete,
 }: {
   entries: Entry[]
-  showQuestions: boolean
-  showAnswers: boolean
+  showLeft: boolean
+  showRight: boolean
   revealedAnswers: Set<string>
   onToggleAnswer: (entryId: string) => void
   onEdit: (entry: Entry) => void
   onDelete: (entry: Entry) => void
 }) {
-  const hasBothColumns = showQuestions && showAnswers
+  const hasBothColumns = showLeft && showRight
 
-  if (!showQuestions && !showAnswers) {
+  if (!showLeft && !showRight) {
     return (
       <Card className="bg-card/60">
         <CardContent className="p-8 text-center text-base leading-relaxed text-muted-foreground">
@@ -215,41 +215,41 @@ function EntryList({
   return (
     <Card className="overflow-hidden bg-card/60 py-0">
       <div className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
-        {showQuestions && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Question</div>}
-        {showAnswers && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Answer</div>}
+        {showLeft && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Question / Term</div>}
+        {showRight && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Answer / Definition</div>}
       </div>
       <CardContent className="flex flex-col gap-px bg-muted/30 p-0">
         {entries.map((entry) => {
           const answerIsVisible = revealedAnswers.has(entry.id)
           return (
-            <div key={entry.id} className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
-              {showQuestions && (
-                <div className="flex min-w-0 flex-col gap-4 bg-card/90 p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="min-w-0 flex-1 whitespace-pre-wrap text-base leading-relaxed text-foreground">{entry.question}</p>
-                    <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
+            <div key={entry.id} className="bg-muted/30">
+              <div className="flex items-center justify-between bg-card/90 px-5 pt-3">
+                <Badge variant="secondary" className="w-fit border-0">
+                  {entry.type === 'term-definition' ? 'Term & Definition' : 'Question & Answer'}
+                </Badge>
+                <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
+              </div>
+              <div className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
+                {showLeft && (
+                  <div className="flex min-w-0 flex-col gap-3 bg-card/90 p-5 pt-2">
+                    <p className="min-w-0 whitespace-pre-wrap text-base leading-relaxed text-foreground">{entry.question}</p>
                   </div>
-                </div>
-              )}
-              {showAnswers && (
-                <div className="min-w-0 bg-card/90 p-3 sm:p-5">
-                  {!showQuestions && (
-                    <div className="mb-3 flex justify-end">
-                      <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
-                    </div>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
-                    aria-expanded={answerIsVisible}
-                    aria-label={`${answerIsVisible ? 'Hide' : 'Show'} answer for ${entry.question}`}
-                    onClick={() => onToggleAnswer(entry.id)}
-                  >
-                    {answerIsVisible ? entry.answer : <span className="text-muted-foreground">Answer hidden · Show answer</span>}
-                  </Button>
-                </div>
-              )}
+                )}
+                {showRight && (
+                  <div className="min-w-0 bg-card/90 p-3 pt-2 sm:p-5 sm:pt-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
+                      aria-expanded={answerIsVisible}
+                      aria-label={`${answerIsVisible ? 'Hide' : 'Show'} ${entry.type === 'term-definition' ? 'definition' : 'answer'} for ${entry.question}`}
+                      onClick={() => onToggleAnswer(entry.id)}
+                    >
+                      {answerIsVisible ? entry.answer : <span className="text-muted-foreground">{entry.type === 'term-definition' ? 'Definition' : 'Answer'} hidden · Reveal</span>}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )
         })}
@@ -463,7 +463,7 @@ export function CategoriesPage() {
       </div>
 
       <div className="mt-9 flex flex-col gap-5">
-        <CollectionToolbar search={search} onSearchChange={setSearch} sort={sort} onSortChange={(value) => setSort(value as CategorySort)} sortOptions={[{ value: 'alphabetical', label: 'Name: A–Z' }, { value: 'reverse-alphabetical', label: 'Name: Z–A' }, { value: 'recent', label: 'Most recent' }]} placeholder="Search categories" label="Category search" />
+        <CollectionToolbar search={search} onSearchChange={setSearch} sort={sort} onSortChange={(value) => setSort(value as CategorySort)} sortOptions={[{ value: 'alphabetical', label: 'Name: A–Z' }, { value: 'reverse-alphabetical', label: 'Name: Z–A' }, { value: 'recent', label: 'Most recent' }]} placeholder="Search" label="Category search" />
         {categories.length === 0 ? (
           <EmptyCollection kind="category" hasSearch={Boolean(search.trim())} onCreate={showCreateForm} onClearSearch={() => setSearch('')} />
         ) : (
@@ -555,7 +555,7 @@ export function CategoryDetailPage() {
       </div>
 
       <div className="mt-7 flex flex-col gap-5">
-        <CollectionToolbar search={search} onSearchChange={setSearch} sort={sort} onSortChange={(value) => setSort(value as TopicSort)} sortOptions={[{ value: 'alphabetical', label: 'Name: A–Z' }, { value: 'reverse-alphabetical', label: 'Name: Z–A' }, { value: 'recent', label: 'Most recent' }]} placeholder="Search topics" label="Topic search" />
+        <CollectionToolbar search={search} onSearchChange={setSearch} sort={sort} onSortChange={(value) => setSort(value as TopicSort)} sortOptions={[{ value: 'alphabetical', label: 'Name: A–Z' }, { value: 'reverse-alphabetical', label: 'Name: Z–A' }, { value: 'recent', label: 'Most recent' }]} placeholder="Search" label="Topic search" />
         {topics.length === 0 ? (
           <EmptyCollection kind="topic" hasSearch={Boolean(search.trim())} onCreate={showCreateForm} onClearSearch={() => setSearch('')} />
         ) : (
@@ -610,8 +610,8 @@ export function TopicStudyPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
-  const [showQuestions, setShowQuestions] = useState(data.settings.showQuestionsByDefault)
-  const [showAnswers, setShowAnswers] = useState(data.settings.showAnswersByDefault)
+  const [showLeft, setShowLeft] = useState(true)
+  const [showRight, setShowRight] = useState(true)
   const [revealedAnswers, setRevealedAnswers] = useState<Set<string>>(() => new Set())
   const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
 
@@ -623,10 +623,10 @@ export function TopicStudyPage() {
   }, [categoryId, openTopic, topic])
 
   useEffect(() => {
-    setShowQuestions(data.settings.showQuestionsByDefault)
-    setShowAnswers(data.settings.showAnswersByDefault)
+    setShowLeft(true)
+    setShowRight(true)
     setRevealedAnswers(new Set())
-  }, [data.settings.showAnswersByDefault, data.settings.showQuestionsByDefault, topic?.id])
+  }, [topic?.id])
 
   if (!category || !topic || topic.categoryId !== category.id) return <NotFoundPage />
   const currentTopic = topic
@@ -649,10 +649,6 @@ export function TopicStudyPage() {
     })
   }
 
-  function revealAllAnswers() {
-    setRevealedAnswers(new Set(entries.map((entry) => entry.id)))
-  }
-
   return (
     <div>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -672,23 +668,19 @@ export function TopicStudyPage() {
           sort={sort}
           onSortChange={(value) => setSort(value as EntrySort)}
           sortOptions={[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'alphabetical', label: 'Question: A–Z' }]}
-          placeholder="Search questions and answers"
+          placeholder="Search"
           label="Entry search"
         />
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card/60 p-2" aria-label="List study controls">
-          <Button type="button" size="sm" variant={showQuestions ? 'secondary' : 'ghost'} aria-pressed={showQuestions} onClick={() => setShowQuestions((current) => !current)}>
-            {showQuestions ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-            Show Questions
+          <Button type="button" size="sm" variant={showLeft ? 'secondary' : 'ghost'} aria-pressed={showLeft} onClick={() => setShowLeft((current) => !current)}>
+            {showLeft ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
+            {showLeft ? 'Hide Left' : 'Reveal Left'}
           </Button>
-          <Button type="button" size="sm" variant={showAnswers ? 'secondary' : 'ghost'} aria-pressed={showAnswers} onClick={() => setShowAnswers((current) => !current)}>
-            {showAnswers ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-            Show Answers
+          <Button type="button" size="sm" variant={showRight ? 'secondary' : 'ghost'} aria-pressed={showRight} onClick={() => setShowRight((current) => !current)}>
+            {showRight ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
+            {showRight ? 'Hide Right' : 'Reveal Right'}
           </Button>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant="ghost" disabled={entries.length === 0} onClick={revealAllAnswers}>Reveal All</Button>
-            <Button type="button" size="sm" variant="ghost" disabled={entries.length === 0} onClick={() => setRevealedAnswers(new Set())}>Hide All</Button>
-          </div>
         </div>
 
         {entries.length === 0 ? (
@@ -696,8 +688,8 @@ export function TopicStudyPage() {
         ) : (
           <EntryList
             entries={entries}
-            showQuestions={showQuestions}
-            showAnswers={showAnswers}
+            showLeft={showLeft}
+            showRight={showRight}
             revealedAnswers={revealedAnswers}
             onToggleAnswer={toggleAnswer}
             onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
@@ -712,7 +704,7 @@ export function TopicStudyPage() {
 
       <EntryFormDialog
         open={formOpen}
-        initialValues={editingEntry ? { question: editingEntry.question, answer: editingEntry.answer } : EMPTY_ENTRY_FORM_VALUES}
+        initialValues={editingEntry ? { type: editingEntry.type, question: editingEntry.question, answer: editingEntry.answer } : EMPTY_ENTRY_FORM_VALUES}
         onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEntry(null) }}
         onSubmit={submitEntry}
       />

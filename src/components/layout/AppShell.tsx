@@ -2,7 +2,7 @@ import { ChevronRight, X } from 'lucide-react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 
 import { getPageTitle, productMark } from '@/app/routes'
-import { PrimaryNav } from '@/components/navigation/PrimaryNav'
+import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
 import { PomodoroPlaceholder } from '@/components/pomodoro/PomodoroPlaceholder'
 import { Button } from '@/components/ui/button'
 import { useStudyData } from '@/lib/use-study-data'
@@ -79,10 +79,15 @@ export function AppShell() {
 
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 sm:px-7 lg:px-10">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-3 sm:flex-nowrap sm:py-4">
+          <div className="flex items-center justify-between gap-6 py-3 sm:py-4">
             <Brand />
-            <div className="min-w-0 flex-1 overflow-x-auto sm:justify-end sm:flex">
-              <PrimaryNav />
+            <div className="flex min-w-0 flex-1 justify-end">
+              <div className="hidden sm:block">
+                <PrimaryNav />
+              </div>
+              <div className="sm:hidden">
+                <MobileNav />
+              </div>
             </div>
           </div>
         </div>
