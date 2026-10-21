@@ -3,14 +3,18 @@ import {
   ArrowDownAZ,
   ArrowUpRight,
   BookOpenCheck,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   EyeOff,
   FolderPlus,
   Layers3,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
+  Shuffle,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -27,8 +31,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type Topic } from '@/lib/study-data'
+import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type FlashcardFrontSide, type StudyMode, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
 import {
   filterAndSortCategories,
@@ -256,6 +261,148 @@ function EntryList({
   )
 }
 
+function getFlashcardLabel(entry: Entry, side: FlashcardFrontSide) {
+  if (entry.type === 'term-definition') return side === 'left' ? 'Term' : 'Definition'
+  return side === 'left' ? 'Question' : 'Answer'
+}
+
+function getFlashcardText(entry: Entry, side: FlashcardFrontSide) {
+  return side === 'left' ? entry.question : entry.answer
+}
+
+function FlashcardMode({
+  entries,
+  frontByEntryType,
+  onEdit,
+  onDelete,
+}: {
+  entries: Entry[]
+  frontByEntryType: Record<Entry['type'], FlashcardFrontSide>
+  onEdit: (entry: Entry) => void
+  onDelete: (entry: Entry) => void
+}) {
+  const entryIds = useMemo(() => entries.map((entry) => entry.id), [entries])
+  const entryIdentity = entryIds.join('|')
+  const [currentEntryId, setCurrentEntryId] = useState<string | null>(() => entryIds[0] ?? null)
+  const [flipped, setFlipped] = useState(false)
+  const [sessionOrder, setSessionOrder] = useState<string[] | null>(null)
+  const previousEntryIdsRef = useRef(entryIds)
+  const currentEntryIdRef = useRef(currentEntryId)
+  currentEntryIdRef.current = currentEntryId
+
+  useEffect(() => {
+    const previousIndex = previousEntryIdsRef.current.indexOf(currentEntryIdRef.current ?? '')
+    const nextEntryId = entryIds.includes(currentEntryIdRef.current ?? '')
+      ? currentEntryIdRef.current
+      : entryIds[Math.min(Math.max(previousIndex, 0), entryIds.length - 1)] ?? null
+
+    currentEntryIdRef.current = nextEntryId
+    setCurrentEntryId(nextEntryId)
+    setFlipped(false)
+    setSessionOrder(null)
+    previousEntryIdsRef.current = entryIds
+  }, [entryIdentity, entryIds])
+
+  const orderedEntries = useMemo(() => {
+    if (!sessionOrder) return entries
+
+    const entriesById = new Map(entries.map((entry) => [entry.id, entry]))
+    return sessionOrder.flatMap((entryId) => {
+      const entry = entriesById.get(entryId)
+      return entry ? [entry] : []
+    })
+  }, [entries, sessionOrder])
+
+  const currentIndex = Math.max(0, orderedEntries.findIndex((entry) => entry.id === currentEntryId))
+  const currentEntry = orderedEntries[currentIndex]
+
+  function moveTo(index: number) {
+    const nextEntry = orderedEntries[index]
+    if (!nextEntry) return
+    setCurrentEntryId(nextEntry.id)
+    setFlipped(false)
+  }
+
+  function shuffleCards() {
+    const shuffled = entries.map((entry) => entry.id)
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1))
+      const currentEntryId = shuffled[index]
+      shuffled[index] = shuffled[randomIndex]
+      shuffled[randomIndex] = currentEntryId
+    }
+    setSessionOrder(shuffled)
+    setCurrentEntryId(shuffled[0] ?? null)
+    setFlipped(false)
+  }
+
+  if (!currentEntry) return null
+
+  const defaultFront: FlashcardFrontSide = currentEntry.type === 'term-definition' ? 'right' : 'left'
+  const frontSide = frontByEntryType[currentEntry.type] ?? defaultFront
+  const backSide: FlashcardFrontSide = frontSide === 'left' ? 'right' : 'left'
+  const visibleSide = flipped ? backSide : frontSide
+  const visibleLabel = getFlashcardLabel(currentEntry, visibleSide)
+  const visibleText = getFlashcardText(currentEntry, visibleSide)
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Card className="relative overflow-hidden bg-card/80">
+        <CardHeader className="flex-row items-start justify-between gap-4 p-6 sm:p-8">
+          <div className="flex flex-col gap-2">
+            <Badge variant="secondary" className="w-fit border-0 bg-secondary/70">{flipped ? 'Back' : 'Front'}</Badge>
+            <CardTitle className="text-2xl sm:text-3xl">{visibleLabel}</CardTitle>
+          </div>
+          <EntryActions entry={currentEntry} onEdit={() => onEdit(currentEntry)} onDelete={() => onDelete(currentEntry)} />
+        </CardHeader>
+        <CardContent className="p-0">
+          <button
+            type="button"
+            className="flex min-h-72 w-full flex-col items-center justify-center gap-6 bg-card px-6 py-12 text-center transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-96 sm:px-16"
+            aria-label={`${flipped ? 'Show front' : 'Show back'} of ${visibleLabel.toLowerCase()}`}
+            aria-keyshortcuts="Space ArrowLeft ArrowRight"
+            onClick={() => setFlipped((current) => !current)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault()
+                moveTo(currentIndex - 1)
+              }
+              if (event.key === 'ArrowRight') {
+                event.preventDefault()
+                moveTo(currentIndex + 1)
+              }
+            }}
+          >
+            <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{visibleLabel}</span>
+            <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{visibleText}</span>
+            <span className="text-base text-muted-foreground">Click or press Space to flip</span>
+          </button>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3 sm:justify-start">
+          <Button type="button" variant="secondary" disabled={currentIndex === 0} onClick={() => moveTo(currentIndex - 1)}>
+            <ChevronLeft aria-hidden="true" data-icon="inline-start" /> Previous
+          </Button>
+          <Button type="button" variant="secondary" disabled={currentIndex === orderedEntries.length - 1} onClick={() => moveTo(currentIndex + 1)}>
+            Next <ChevronRight aria-hidden="true" data-icon="inline-end" />
+          </Button>
+        </div>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <p className="text-base font-medium text-muted-foreground" aria-live="polite">Card {currentIndex + 1} of {orderedEntries.length}</p>
+          <Button type="button" variant="ghost" onClick={shuffleCards}>
+            <Shuffle aria-hidden="true" data-icon="inline-start" /> Shuffle
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setFlipped((current) => !current)}>
+            <RotateCcw aria-hidden="true" data-icon="inline-start" /> Flip
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CategoryCard({
   category,
   topicCount,
@@ -396,9 +543,9 @@ export function DashboardPage() {
       <div className="mt-9 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <Card className="relative overflow-hidden bg-primary text-primary-foreground">
           <CardHeader className="relative gap-3 p-6 sm:p-8">
-            <Badge variant="secondary" className="w-fit border-0 bg-primary-foreground/10 text-primary-foreground">Phase 4 · List study</Badge>
+            <Badge variant="secondary" className="w-fit border-0 bg-primary-foreground/10 text-primary-foreground">Phase 5 · Flashcard study</Badge>
             <CardTitle className="max-w-md text-2xl leading-tight text-primary-foreground sm:text-3xl">A softer way to return to what matters.</CardTitle>
-            <CardDescription className="max-w-lg text-base leading-relaxed text-primary-foreground/75">Questions and answers now have a calm, local place for focused review.</CardDescription>
+            <CardDescription className="max-w-lg text-base leading-relaxed text-primary-foreground/75">Move from a calm list into focused, one-card-at-a-time review.</CardDescription>
           </CardHeader>
           <CardContent className="relative p-6 pt-0 sm:p-8 sm:pt-0">
             <Button render={<Link to="/categories" />} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 focus-visible:ring-primary-foreground/60" size="lg">
@@ -608,6 +755,7 @@ export function TopicStudyPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
+  const [studyMode, setStudyMode] = useState<StudyMode>(() => data.settings.defaultStudyMode)
   const topicEntryIds = useMemo(() => getEntriesForTopic(data, topicId).map((entry) => entry.id), [data, topicId])
   const [hiddenLeft, setHiddenLeft] = useState<Set<string>>(() => new Set())
   const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => new Set(topicEntryIds))
@@ -666,6 +814,22 @@ export function TopicStudyPage() {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <PageHeading title={topic.name} description={topic.description || 'A focused review path for questions and explanations.'} />
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
+          <ToggleGroup
+            value={[studyMode]}
+            onValueChange={(value) => {
+              const nextMode = value[0]
+              if (nextMode === 'list' || nextMode === 'flashcard') setStudyMode(nextMode)
+            }}
+            aria-label="Study mode"
+            className="w-full justify-end sm:w-auto"
+          >
+            <ToggleGroupItem value="list" aria-label="List mode" className="flex-1 sm:flex-none">
+              <Layers3 aria-hidden="true" data-icon="inline-start" /> List
+            </ToggleGroupItem>
+            <ToggleGroupItem value="flashcard" aria-label="Flashcard mode" className="flex-1 sm:flex-none">
+              <BookOpenCheck aria-hidden="true" data-icon="inline-start" /> Flashcards
+            </ToggleGroupItem>
+          </ToggleGroup>
           <div className="text-base text-muted-foreground sm:text-right">
             <CountLabel count={getEntriesForTopic(data, topic.id).length} singular="question" plural="questions" />
           </div>
@@ -682,7 +846,7 @@ export function TopicStudyPage() {
           sortOptions={[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'alphabetical', label: 'Question: A–Z' }]}
           placeholder="Search"
           label="Entry search"
-          rightControls={
+          rightControls={studyMode === 'list' ? (
             <>
               <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, effectiveHiddenLeft)}>
                 {allLeftHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
@@ -693,18 +857,25 @@ export function TopicStudyPage() {
                 {allRightHidden ? 'Reveal Right' : 'Hide Right'}
               </Button>
             </>
-          }
+          ) : undefined}
         />
 
         {entries.length === 0 ? (
           <EntryEmptyState hasSearch={Boolean(search.trim())} onCreate={showCreateForm} onClearSearch={() => setSearch('')} />
-        ) : (
+        ) : studyMode === 'list' ? (
           <EntryList
             entries={entries}
             hiddenLeft={effectiveHiddenLeft}
             hiddenRight={effectiveHiddenRight}
             onToggleLeft={(entryId) => toggleHiddenEntry(setHiddenLeft, entryId)}
             onToggleRight={(entryId) => toggleHiddenEntry(setHiddenRight, entryId)}
+            onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
+            onDelete={setDeletingEntry}
+          />
+        ) : (
+          <FlashcardMode
+            entries={entries}
+            frontByEntryType={data.settings.flashcardFrontByEntryType}
             onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
             onDelete={setDeletingEntry}
           />
