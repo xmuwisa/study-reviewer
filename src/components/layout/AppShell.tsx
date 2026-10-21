@@ -1,5 +1,5 @@
-import { ChevronRight, X } from 'lucide-react'
-import { Link, Outlet, useLocation, useParams } from 'react-router-dom'
+import { ChevronRight, Plus, X } from 'lucide-react'
+import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { getPageTitle, productMark } from '@/app/routes'
 import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
@@ -93,6 +93,38 @@ function StorageNotice({ storageNotice, clearStorageNotice }: { storageNotice: S
   )
 }
 
+function FloatingAddButton({ pathname }: { pathname: string }) {
+  const navigate = useNavigate()
+  const { categoryId, topicId } = useParams()
+  let target: string | null = null
+  let label = ''
+
+  if (topicId && categoryId && pathname.includes('/topics/')) {
+    target = `${pathname}?action=create`
+    label = 'Create entry'
+  } else if (categoryId && pathname.startsWith('/categories/')) {
+    target = `${pathname}?action=create`
+    label = 'Create topic'
+  } else if (pathname === '/' || pathname === '/categories') {
+    target = '/categories?action=create'
+    label = 'Create category'
+  }
+
+  if (!target) return null
+
+  return (
+    <Button
+      type="button"
+      size="icon-lg"
+      aria-label={label}
+      className="fixed right-4 bottom-6 z-20 rounded-full bg-primary text-primary-foreground hover:bg-primary/85 sm:right-7 sm:bottom-8"
+      onClick={() => navigate(target)}
+    >
+      <Plus aria-hidden="true" />
+    </Button>
+  )
+}
+
 export function AppShell() {
   const { pathname } = useLocation()
   const { data, storageNotice, clearStorageNotice } = useStudyData()
@@ -128,6 +160,7 @@ export function AppShell() {
           <StorageNotice storageNotice={storageNotice} clearStorageNotice={clearStorageNotice} />
         </div>
         <Outlet />
+        <FloatingAddButton pathname={pathname} />
         <div className="mt-8 flex justify-end">
           <PomodoroPlaceholder />
         </div>

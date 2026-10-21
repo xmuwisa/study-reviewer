@@ -7,8 +7,8 @@ styling, route placeholders, reusable UI primitives, typed records, runtime
 validation, and versioned localStorage adapter are present. Phase 3 category
 and topic CRUD is complete and merged into `main`. Phase 4 entry management
 and List Study Mode are complete and merged into `main`. Phase 5 Flashcard
-Study Mode is being implemented on the active `feat/flashcard-study-mode`
-branch.
+Study Mode is complete and merged into `main`. Phase 6 Dashboard Overview is
+being implemented on the active `feat/dashboard-overview` branch.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
