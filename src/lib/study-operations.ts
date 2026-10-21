@@ -6,8 +6,11 @@ import {
   type CategoryInput,
   type Entry,
   type EntryInput,
+  type EntryType,
+  type FlashcardFrontSide,
   type RecordId,
   type StudyData,
+  type StudySettings,
   type Timestamp,
   type Topic,
   type TopicInput,
@@ -16,6 +19,11 @@ import {
 export type CategorySort = 'alphabetical' | 'reverse-alphabetical' | 'recent'
 export type TopicSort = 'alphabetical' | 'reverse-alphabetical' | 'recent'
 export type EntrySort = 'newest' | 'oldest' | 'alphabetical'
+
+export type StudySettingsPatch = Partial<Omit<StudySettings, 'flashcardFrontByEntryType' | 'pomodoro'>> & {
+  flashcardFrontByEntryType?: Partial<Record<EntryType, FlashcardFrontSide>>
+  pomodoro?: Partial<StudySettings['pomodoro']>
+}
 
 const MAX_RECENT_ACTIVITY = 20
 
@@ -174,6 +182,24 @@ export function markTopicAccessed(data: StudyData, topicId: RecordId, accessedAt
     activity: {
       ...data.activity,
       recentlyAccessed: updateRecentActivity(data, 'topic', topicId, accessedAt),
+    },
+  }
+}
+
+export function updateSettings(data: StudyData, patch: StudySettingsPatch): StudyData {
+  return {
+    ...data,
+    settings: {
+      ...data.settings,
+      ...patch,
+      flashcardFrontByEntryType: {
+        ...data.settings.flashcardFrontByEntryType,
+        ...patch.flashcardFrontByEntryType,
+      },
+      pomodoro: {
+        ...data.settings.pomodoro,
+        ...patch.pomodoro,
+      },
     },
   }
 }

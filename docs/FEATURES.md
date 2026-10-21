@@ -188,8 +188,13 @@ Theme changes apply without losing unsaved form data. The default is System.
 - Default study mode: List or Flashcard
 - Default question visibility
 - Default answer visibility
+- Flashcard front-side preference for each entry type
 - Enable or disable copy and paste in relevant study input fields
 - Enable or disable browser spellcheck
+
+Flashcard front-side preferences are saved independently for Question & Answer
+and Term & Definition entries. Restoring flashcard defaults resets both
+front-side preferences without changing the other settings.
 
 Copy/paste restrictions apply only to the relevant editable study inputs, not
 to the browser, stored data, or study display. The setting should default to

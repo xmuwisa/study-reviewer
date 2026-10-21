@@ -8,7 +8,8 @@ validation, and versioned localStorage adapter are present. Phase 3 category
 and topic CRUD is complete and merged into `main`. Phase 4 entry management
 and List Study Mode are complete and merged into `main`. Phase 5 Flashcard
 Study Mode is complete and merged into `main`. Phase 6 Dashboard Overview is
-being implemented on the active `feat/dashboard-overview` branch.
+complete and merged into `main`. Phase 7 Settings and Preferences is complete
+on the active `feat/settings-preferences` branch and ready for review.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
@@ -165,7 +166,7 @@ prefix conventions when creating them.
 
 **Suggested branch:** `feat/flashcard-study-mode`
 
-**Status:** In progress on `feat/flashcard-study-mode`.
+**Status:** Complete and merged into `main`.
 
 **Dependencies:** Phase 4.
 
@@ -196,6 +197,8 @@ prefix conventions when creating them.
 
 **Suggested branch:** `feat/dashboard-overview`
 
+**Status:** Complete and merged into `main`.
+
 **Dependencies:** Phases 2–5.
 
 **Deliverables**
@@ -222,12 +225,15 @@ prefix conventions when creating them.
 
 **Suggested branch:** `feat/settings-preferences`
 
+**Status:** Complete on `feat/settings-preferences`; ready for review.
+
 **Dependencies:** Phases 2, 4, and 5.
 
 **Deliverables**
 
 - Light, dark, and system themes
 - Default study mode and visibility preferences
+- Type-aware flashcard front-side preferences with local restore defaults
 - Copy/paste setting with an explanation of limitations
 - Browser spellcheck setting
 - Pomodoro preference fields and defaults
@@ -236,16 +242,18 @@ prefix conventions when creating them.
 **Acceptance criteria**
 
 - Preferences persist across reloads and apply to new study sessions.
+- Flashcard front-side preferences persist independently for both entry types,
+  and restoring flashcard defaults resets both values.
 - System theme follows the browser/OS preference when selected.
 - Copy/paste restrictions are scoped to relevant inputs and are not described
   as universal browser control.
 - Spellcheck behavior is described as browser/OS dependent.
 
-**Verification**
+**Validation**
 
-- Unit-test preference defaults, validation, and persistence.
-- Add Playwright coverage for theme changes and study defaults.
-- Verify focus visibility, contrast, and reduced-motion behavior in each theme.
+- `bun run typecheck`
+- `bun run lint`
+- `bun run build`
 
 ### Phase 8 — Persistent Pomodoro timer
 
