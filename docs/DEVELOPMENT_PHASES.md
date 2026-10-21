@@ -6,8 +6,8 @@ merged into `main`: the responsive React/Vite shell, Tailwind and shadcn
 styling, route placeholders, reusable UI primitives, typed records, runtime
 validation, and versioned localStorage adapter are present. Phase 3 category
 and topic CRUD is complete and merged into `main`. Phase 4 entry management
-and List Study Mode are being implemented on the active
-`feat/entry-list-study` branch.
+and List Study Mode are complete on the active `feat/entry-list-study` branch
+and pending pull request review.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
@@ -129,7 +129,7 @@ prefix conventions when creating them.
 
 **Suggested branch:** `feat/entry-list-study`
 
-**Status:** In progress on `feat/entry-list-study`.
+**Status:** Complete on `feat/entry-list-study`; pending pull request review.
 
 **Dependencies:** Phase 3.
 

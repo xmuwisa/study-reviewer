@@ -21,10 +21,11 @@ The project uses Bun for package management and local development commands.
 ## Project status
 
 The Phase 1 application foundation, Phase 2 local data foundation, and Phase 3
-category/topic CRUD are merged into `main`. Phase 4 is active on
+category/topic CRUD are merged into `main`. Phase 4 is complete on
 `feat/entry-list-study` and adds local typed-entry management, search, sorting,
-and responsive List Study Mode. Testing infrastructure and
-test coverage remain intentionally deferred until explicitly requested.
+and responsive List Study Mode; its pull request remains open for review.
+Testing infrastructure and test coverage remain intentionally deferred until
+explicitly requested.
 Flashcard Mode, settings, and the functional Pomodoro timer remain planned for
 later phases.
 
