@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, KeyboardEvent, SetStateAction } from 'react'
+import type { Dispatch, KeyboardEvent, ReactNode, SetStateAction } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialog'
@@ -124,6 +124,7 @@ function CollectionToolbar({
   onSortChange,
   placeholder,
   label,
+  rightControls,
 }: {
   search: string
   onSearchChange: (value: string) => void
@@ -132,16 +133,18 @@ function CollectionToolbar({
   onSortChange: (value: string) => void
   placeholder: string
   label: string
+  rightControls?: ReactNode
 }) {
   return (
-    <div className="flex justify-end">
-      <div className="flex w-full items-center gap-3 rounded-2xl bg-card/60 p-2">
+    <div className="flex flex-col gap-2 rounded-2xl bg-card/60 p-2 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="relative min-w-0 flex-1">
           <Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input aria-label={label} className="h-11 border-0 bg-background/70 pl-9" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder={placeholder} />
         </div>
         <SortSelect id={`${label.toLowerCase().replaceAll(' ', '-')}-sort`} label={`Sort ${label.toLowerCase()}`} value={sort} options={sortOptions} onChange={onSortChange} />
       </div>
+      {rightControls && <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{rightControls}</div>}
     </div>
   )
 }
@@ -208,19 +211,19 @@ function EntryList({
         const rightLabel = entry.type === 'term-definition' ? 'Definition' : 'Answer'
 
         return (
-          <Card key={entry.id} className="overflow-hidden bg-card/60 py-0">
+          <Card key={entry.id} className="overflow-hidden bg-secondary/25 py-0">
             <CardContent className="p-0">
-              <div className="flex justify-end bg-card/90 px-5 py-2">
+              <div className="flex justify-end px-5 py-2 opacity-100 sm:opacity-0 sm:transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
                 <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
               </div>
-              <div className="grid gap-px bg-muted/30 sm:grid-cols-2">
-                <div className="min-w-0 bg-card/90">
-                  <div className="bg-muted/35 px-5 py-3 text-base font-semibold text-foreground">{leftLabel}</div>
+              <div className="grid gap-px bg-background/70 sm:grid-cols-2">
+                <div className="min-w-0 bg-primary/5">
+                  <div className="bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground">{leftLabel}</div>
                   <div className="p-5">
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
+                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-primary/5 p-5 text-left text-base font-normal leading-relaxed hover:bg-primary/10"
                       aria-expanded={!leftHidden}
                       aria-label={`${leftHidden ? 'Reveal' : 'Hide'} ${leftLabel.toLowerCase()} for ${entry.question}`}
                       onClick={() => onToggleLeft(entry.id)}
@@ -229,13 +232,13 @@ function EntryList({
                     </Button>
                   </div>
                 </div>
-                <div className="min-w-0 bg-card/90">
-                  <div className="bg-muted/35 px-5 py-3 text-base font-semibold text-foreground">{rightLabel}</div>
+                <div className="min-w-0 bg-primary/5">
+                  <div className="bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground">{rightLabel}</div>
                   <div className="p-5">
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
+                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-primary/5 p-5 text-left text-base font-normal leading-relaxed hover:bg-primary/10"
                       aria-expanded={!rightHidden}
                       aria-label={`${rightHidden ? 'Reveal' : 'Hide'} ${rightLabel.toLowerCase()} for ${entry.question}`}
                       onClick={() => onToggleRight(entry.id)}
@@ -671,18 +674,19 @@ export function TopicStudyPage() {
           sortOptions={[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'alphabetical', label: 'Question: A–Z' }]}
           placeholder="Search"
           label="Entry search"
+          rightControls={
+            <>
+              <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, hiddenLeft)}>
+                {allLeftHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+                {allLeftHidden ? 'Reveal Left' : 'Hide Left'}
+              </Button>
+              <Button type="button" size="sm" variant={allRightHidden ? 'ghost' : 'secondary'} aria-pressed={!allRightHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenRight, hiddenRight)}>
+                {allRightHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+                {allRightHidden ? 'Reveal Right' : 'Hide Right'}
+              </Button>
+            </>
+          }
         />
-
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card/60 p-2" aria-label="List study controls">
-          <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, hiddenLeft)}>
-            {allLeftHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-            {allLeftHidden ? 'Reveal Left' : 'Hide Left'}
-          </Button>
-          <Button type="button" size="sm" variant={allRightHidden ? 'ghost' : 'secondary'} aria-pressed={!allRightHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenRight, hiddenRight)}>
-            {allRightHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-            {allRightHidden ? 'Reveal Right' : 'Hide Right'}
-          </Button>
-        </div>
 
         {entries.length === 0 ? (
           <EntryEmptyState hasSearch={Boolean(search.trim())} onCreate={showCreateForm} onClearSearch={() => setSearch('')} />

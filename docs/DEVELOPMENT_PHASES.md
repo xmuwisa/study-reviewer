@@ -143,6 +143,7 @@ prefix conventions when creating them.
 - Question / Term and Answer / Definition column visibility toggles
 - Individual left and right content reveal/hide controls
 - Both list columns visible by default
+- Responsive full-screen mobile navigation panel with active-page state
 
 **Acceptance criteria**
 
@@ -150,6 +151,7 @@ prefix conventions when creating them.
 - Required-field and storage errors are clear and preserve entered values.
 - Global and individual left/right visibility controls have predictable, accessible state.
 - List Mode stacks or adapts on narrow screens without losing relationships.
+- Entry actions remain discoverable on hover, keyboard focus, and touch devices.
 
 **Verification**
 

@@ -25,7 +25,8 @@ The active location is visible to keyboard and screen-reader users. A
 context-aware floating Add button is
 available while scrolling and opens the appropriate creation form for the
 current page. It must not overlap the persistent Pomodoro widget or obscure
-content on mobile.
+content on mobile. On small screens, the primary navigation opens in a
+full-screen sliding panel with an explicit close control and active-page state.
 
 ## Dashboard
 
@@ -116,6 +117,12 @@ List Mode displays each entry in an individual responsive two-column card:
 Each card uses `Question` and `Answer` headers for Question & Answer entries or
 `Term` and `Definition` headers for Term & Definition entries. Edit and Delete
 actions belong to the complete card and are presented in a shared action area.
+The action area is visible on touch devices and appears on desktop hover or
+keyboard focus.
+
+The search and sorting toolbar keeps the left/right visibility controls beside
+the sort control on desktop and places them below the search controls on
+narrow screens.
 
 Controls behave as follows:
 
