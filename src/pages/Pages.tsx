@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
+import { cn } from '@/lib/utils'
 import {
   filterAndSortCategories,
   filterAndSortEntries,
@@ -211,19 +212,22 @@ function EntryList({
         const rightLabel = entry.type === 'term-definition' ? 'Definition' : 'Answer'
 
         return (
-          <Card key={entry.id} className="overflow-hidden bg-secondary/25 py-0">
+          <Card key={entry.id} className="overflow-hidden bg-transparent py-0">
             <CardContent className="p-0">
-              <div className="flex justify-end px-5 py-2 opacity-100 sm:opacity-0 sm:transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
+              <div className="flex justify-end bg-transparent px-5 py-2 opacity-100 sm:opacity-0 sm:transition-opacity group-hover/card:opacity-100 group-focus-within/card:opacity-100">
                 <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
               </div>
               <div className="grid gap-px bg-background/70 sm:grid-cols-2">
-                <div className="min-w-0 bg-primary/5">
-                  <div className="bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground">{leftLabel}</div>
+                <div className={cn('min-w-0', leftHidden ? 'bg-primary/10' : 'bg-card')}>
+                  <div className="rounded-t-2xl bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground sm:rounded-tr-none">{leftLabel}</div>
                   <div className="p-5">
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-primary/5 p-5 text-left text-base font-normal leading-relaxed hover:bg-primary/10"
+                      className={cn(
+                        'h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl p-5 text-left text-base font-normal leading-relaxed',
+                        leftHidden ? 'bg-primary/10 hover:bg-primary/15' : 'bg-card hover:bg-muted/20',
+                      )}
                       aria-expanded={!leftHidden}
                       aria-label={`${leftHidden ? 'Reveal' : 'Hide'} ${leftLabel.toLowerCase()} for ${entry.question}`}
                       onClick={() => onToggleLeft(entry.id)}
@@ -232,13 +236,16 @@ function EntryList({
                     </Button>
                   </div>
                 </div>
-                <div className="min-w-0 bg-primary/5">
-                  <div className="bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground">{rightLabel}</div>
+                <div className={cn('min-w-0', rightHidden ? 'bg-primary/10' : 'bg-card')}>
+                  <div className="rounded-t-2xl bg-secondary/55 px-5 py-3 text-base font-semibold text-foreground sm:rounded-tl-none sm:rounded-tr-2xl">{rightLabel}</div>
                   <div className="p-5">
                     <Button
                       type="button"
                       variant="ghost"
-                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-primary/5 p-5 text-left text-base font-normal leading-relaxed hover:bg-primary/10"
+                      className={cn(
+                        'h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl p-5 text-left text-base font-normal leading-relaxed',
+                        rightHidden ? 'bg-primary/10 hover:bg-primary/15' : 'bg-card hover:bg-muted/20',
+                      )}
                       aria-expanded={!rightHidden}
                       aria-label={`${rightHidden ? 'Reveal' : 'Hide'} ${rightLabel.toLowerCase()} for ${entry.question}`}
                       onClick={() => onToggleRight(entry.id)}
