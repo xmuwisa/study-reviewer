@@ -27,7 +27,7 @@ export function PomodoroPlaceholder() {
                 Soon
               </Badge>
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-base leading-relaxed text-muted-foreground">
               A focused timer is planned for Phase 8.
             </p>
           </div>

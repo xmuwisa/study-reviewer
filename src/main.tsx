@@ -3,13 +3,19 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import { AppRoutes } from '@/App'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { StudyProvider } from '@/lib/study-provider'
 
 import '@/index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <AppRoutes />
+      <StudyProvider>
+        <TooltipProvider>
+          <AppRoutes />
+        </TooltipProvider>
+      </StudyProvider>
     </BrowserRouter>
   </StrictMode>,
 )
