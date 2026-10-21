@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.*
+
+# Build and tool outputs
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Generated reports and temporary artifacts
+playwright-report/
+test-results/
+reports/
+.cache/
+.temp/
+tmp/
+*.log
+
+# Local operating-system files
+.DS_Store
