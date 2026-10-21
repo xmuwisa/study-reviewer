@@ -1,8 +1,12 @@
 # Study Reviewer Development Phases
 
 This roadmap is for implementation after the planning documents are approved.
-Phase 1 foundation work is implemented on the active `feat/app-foundation`
-branch; later phases remain planned and unimplemented.
+The Phase 1 application foundation has been transferred to the active
+`feat/app-foundation` branch: the responsive React/Vite shell, Tailwind and
+shadcn styling, route placeholders, reusable UI primitives, and static
+Pomodoro widget are present. Vitest and Playwright configuration and test files
+remain intentionally deferred until explicitly requested; later phases remain
+planned and unimplemented.
 Each phase is intentionally small enough for a focused branch and pull
 request. Keep the branch names illustrative; use the repository's normal
 prefix conventions when creating them.
