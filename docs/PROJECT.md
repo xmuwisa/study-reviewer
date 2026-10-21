@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phases 1–3 are merged into `main`; Phase 4 entry management and List
-Study Mode are complete on `feat/entry-list-study` and pending pull request
-review. Flashcard and later study features remain planned for later phases.
+Status: Phases 1–4 are merged into `main`; Phase 5 Flashcard Study Mode is in
+progress on `feat/flashcard-study-mode`. Later study features remain planned
+for later phases.
 
 ## Product vision
 
