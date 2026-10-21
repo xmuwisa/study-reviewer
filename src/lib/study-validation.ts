@@ -1,8 +1,11 @@
 import {
+  createDefaultSettings,
   STUDY_DATA_SCHEMA_VERSION,
   type ActivityState,
   type Category,
   type Entry,
+  type EntryType,
+  type FlashcardFrontSide,
   type PomodoroMode,
   type PomodoroPreferences,
   type PomodoroSession,
@@ -52,6 +55,14 @@ function isPomodoroMode(value: unknown): value is PomodoroMode {
   return value === 'focus' || value === 'short-break' || value === 'long-break'
 }
 
+function isEntryType(value: unknown): value is EntryType {
+  return value === 'question-answer' || value === 'term-definition'
+}
+
+function isFlashcardFrontSide(value: unknown): value is FlashcardFrontSide {
+  return value === 'left' || value === 'right'
+}
+
 function addIssue(issues: ValidationIssue[], path: string, message: string) {
   issues.push({ path, message })
 }
@@ -97,6 +108,7 @@ function validateEntry(value: unknown, path: string, issues: ValidationIssue[]):
 
   if (!isNonEmptyString(value.id)) addIssue(issues, `${path}.id`, 'must be a non-empty string')
   if (!isNonEmptyString(value.topicId)) addIssue(issues, `${path}.topicId`, 'must be a non-empty string')
+  if (!isEntryType(value.type)) addIssue(issues, `${path}.type`, 'must be question-answer or term-definition')
   if (!isNonEmptyString(value.question)) addIssue(issues, `${path}.question`, 'must be a non-empty string')
   if (!isNonEmptyString(value.answer)) addIssue(issues, `${path}.answer`, 'must be a non-empty string')
   if (!isTimestamp(value.createdAt)) addIssue(issues, `${path}.createdAt`, 'must be a timestamp')
@@ -141,6 +153,15 @@ function validateSettings(value: unknown, path: string, issues: ValidationIssue[
   }
   for (const field of ['showQuestionsByDefault', 'showAnswersByDefault', 'allowCopyPaste', 'spellcheck'] as const) {
     if (typeof value[field] !== 'boolean') addIssue(issues, `${path}.${field}`, 'must be a boolean')
+  }
+  if (!isRecord(value.flashcardFrontByEntryType)) {
+    addIssue(issues, `${path}.flashcardFrontByEntryType`, 'must be an object')
+  } else {
+    for (const type of ['question-answer', 'term-definition'] as const) {
+      if (!isFlashcardFrontSide(value.flashcardFrontByEntryType[type])) {
+        addIssue(issues, `${path}.flashcardFrontByEntryType.${type}`, 'must be left or right')
+      }
+    }
   }
   validatePomodoroPreferences(value.pomodoro, `${path}.pomodoro`, issues)
 
@@ -222,6 +243,26 @@ function validateUniqueIds(records: Array<{ id: unknown }>, path: string, issues
 export function migrateStudyData(value: unknown): MigrationResult {
   if (!isRecord(value) || typeof value.schemaVersion !== 'number') {
     return { ok: false, reason: 'invalid', message: 'Stored data has no valid schema version.' }
+  }
+
+  if (value.schemaVersion === 1) {
+    const defaultSettings = createDefaultSettings()
+    const entries = Array.isArray(value.entries)
+      ? value.entries.map((entry) => (isRecord(entry) ? { ...entry, type: isEntryType(entry.type) ? entry.type : 'question-answer' } : entry))
+      : value.entries
+    const settings = isRecord(value.settings)
+      ? {
+          ...value.settings,
+          showAnswersByDefault: true,
+          flashcardFrontByEntryType: defaultSettings.flashcardFrontByEntryType,
+        }
+      : value.settings
+
+    return {
+      ok: true,
+      value: { ...value, schemaVersion: STUDY_DATA_SCHEMA_VERSION, entries, settings },
+      version: STUDY_DATA_SCHEMA_VERSION,
+    }
   }
 
   if (value.schemaVersion !== STUDY_DATA_SCHEMA_VERSION) {

@@ -5,8 +5,9 @@ The Phase 1 application foundation and Phase 2 local data foundations are
 merged into `main`: the responsive React/Vite shell, Tailwind and shadcn
 styling, route placeholders, reusable UI primitives, typed records, runtime
 validation, and versioned localStorage adapter are present. Phase 3 category
-and topic CRUD is complete on the active `feat/category-topic-crud` branch and
-ready for pull request review.
+and topic CRUD is complete and merged into `main`. Phase 4 entry management
+and List Study Mode are complete on the active `feat/entry-list-study` branch
+and pending pull request review.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
@@ -128,23 +129,30 @@ prefix conventions when creating them.
 
 **Suggested branch:** `feat/entry-list-study`
 
+**Status:** Complete on `feat/entry-list-study`; pending pull request review.
+
 **Dependencies:** Phase 3.
 
 **Deliverables**
 
 - Entry create, edit, and delete forms
-- Entry search by question or answer
+- Question & Answer and Term & Definition entry types with safe migration
+- Entry search by question or answer/definition
 - Newest, oldest, and alphabetical sorting
 - Responsive two-column List Mode
-- Show Questions, Show Answers, Reveal All, Hide All, and individual toggles
-- Default visibility preference wiring
+- Question / Term and Answer / Definition column visibility toggles
+- Individual left and right content reveal/hide controls
+- Both list columns remain visible by default, with Question / Term content
+  revealed and Answer / Definition content hidden until revealed
+- Responsive full-screen mobile navigation panel with active-page state
 
 **Acceptance criteria**
 
 - Users can manage entries without losing unrelated content.
 - Required-field and storage errors are clear and preserve entered values.
-- Global and individual visibility controls have predictable, accessible state.
+- Global and individual left/right visibility controls have predictable, accessible state.
 - List Mode stacks or adapts on narrow screens without losing relationships.
+- Entry actions remain discoverable on hover, keyboard focus, and touch devices.
 
 **Verification**
 
@@ -161,6 +169,9 @@ prefix conventions when creating them.
 **Deliverables**
 
 - One-card question/answer presentation
+- Type-aware front-side defaults and locally saved preferences
+- Question & Answer defaults to Question first; Term & Definition defaults to Definition first
+- Mixed sessions respect each entry's type-specific orientation preference
 - Flip, Previous, Next, position indicator, and optional Shuffle
 - Keyboard and reduced-motion alternatives
 - Position reconciliation after search, sort, shuffle, or deletion

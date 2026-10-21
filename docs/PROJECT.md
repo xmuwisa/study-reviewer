@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phases 1–2 are merged into `main`; Phase 3 category and topic CRUD is
-complete on `feat/category-topic-crud` and ready for pull request review. Entry
-and study features remain planned for later phases.
+Status: Phases 1–3 are merged into `main`; Phase 4 entry management and List
+Study Mode are complete on `feat/entry-list-study` and pending pull request
+review. Flashcard and later study features remain planned for later phases.
 
 ## Product vision
 
@@ -27,7 +27,7 @@ The product optimizes for:
 
 The initial release includes:
 
-- The hierarchy `Category → Topic → Question & Answer`
+- The hierarchy `Category → Topic → Question & Answer or Term & Definition`
 - Category, topic, and entry CRUD operations
 - Dashboard overview statistics and recently accessed items
 - Search and practical sorting at each content level
@@ -64,8 +64,9 @@ Category
 
 Categories contain topics, and topics contain entries. A category and topic
 have a name, optional description where useful, creation/update timestamps,
-and activity metadata. An entry has a question or term and an answer or
-explanation. Entries do not receive additional hierarchy or metadata in the
+and activity metadata. An entry has a type of Question & Answer or Term &
+Definition, with a left-side question or term and a right-side answer or
+definition. Entries do not receive additional hierarchy or metadata in the
 initial version.
 
 Use stable generated IDs and numeric timestamps. Store categories, topics, and
@@ -175,16 +176,15 @@ the same entries and should not create separate copies of study data.
 
 ### Predictable visibility controls
 
-Questions are visible by default and answers are hidden by default, while the
-user may configure defaults. The controls have separate responsibilities:
+Both List Mode columns remain visible by default. Question / Term content is
+revealed by default, while Answer / Definition content is hidden by default.
+The controls have separate responsibilities:
 
-- `Show Questions` toggles the question column's visibility.
-- `Show Answers` toggles the answer column's visibility.
-- `Reveal All` reveals every answer cell without changing question-column
-  visibility.
-- `Hide All` hides every answer cell without changing question-column
-  visibility.
-- Clicking an individual answer cell reveals or hides only that cell.
+- `Hide Left` / `Reveal Left` toggles the question or term content in every
+  card while keeping the left column visible.
+- `Hide Right` / `Reveal Right` toggles the answer or definition content in
+  every card while keeping the right column visible.
+- Clicking an individual left or right cell reveals or hides only that cell.
 
 These controls must not silently change saved content or confuse column
 visibility with individual answer reveal state.

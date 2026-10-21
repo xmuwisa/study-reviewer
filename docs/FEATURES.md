@@ -6,7 +6,7 @@ exist.
 
 ## Shared conventions
 
-- The content hierarchy is `Category → Topic → Question & Answer`.
+- The content hierarchy is `Category → Topic → Question & Answer or Term & Definition`.
 - Names are required for categories and topics; descriptions are optional.
 - Questions/terms and answers/explanations are required entry fields.
 - IDs are stable and generated locally. Display ordering is derived from
@@ -19,11 +19,14 @@ exist.
 ## Application shell and navigation
 
 The app shell provides access to Dashboard, Categories, and Settings, with
-breadcrumbs on category and topic detail views. The active location is visible
-to keyboard and screen-reader users. A context-aware floating Add button is
+breadcrumbs on category and topic detail views. Topic breadcrumbs link through
+Home, Categories, and the parent category before identifying the current topic.
+The active location is visible to keyboard and screen-reader users. A
+context-aware floating Add button is
 available while scrolling and opens the appropriate creation form for the
 current page. It must not overlap the persistent Pomodoro widget or obscure
-content on mobile.
+content on mobile. On small screens, the primary navigation opens in a
+full-screen sliding panel with an explicit close control and active-page state.
 
 ## Dashboard
 
@@ -92,38 +95,50 @@ modes.
 
 ### Entry management
 
-- Create an entry with a question/term and answer/explanation.
-- Edit either field without changing the entry ID.
+- Create an entry as either Question & Answer or Term & Definition.
+- Edit the entry type and either field without changing the entry ID.
 - Delete an entry after confirmation.
 - Search both question and answer text, case-insensitively.
 - Sort by newest, oldest, or alphabetical question/term.
+- Existing entries migrate safely to Question & Answer when the entry type is absent.
 
 Forms must show required-field errors, preserve entered values when validation
 fails, and report storage failures without claiming the change was saved.
 
 ### List Mode
 
-List Mode displays entries in a responsive two-column layout:
+List Mode displays each entry in an individual responsive two-column card:
 
 | Column | Content |
 | --- | --- |
-| Questions | Question or term text |
-| Answers | Answer or explanation text, visible according to state |
+| Question / Term | Question or term text |
+| Answer / Definition | Answer or definition text, visible according to state |
+
+Each card uses `Question` and `Answer` headers for Question & Answer entries or
+`Term` and `Definition` headers for Term & Definition entries. Edit and Delete
+actions belong to the complete card and are presented in a shared action area.
+The action area is visible on touch devices and appears on desktop hover or
+keyboard focus.
+Visible and hidden entry content use the same plain card surfaces; hidden cells
+replace only their text with a clickable Reveal placeholder.
+
+The search and sorting toolbar keeps the left/right visibility controls beside
+the sort control on desktop and places them below the search controls on
+narrow screens.
 
 Controls behave as follows:
 
-- `Show Questions` toggles the question column's visibility.
-- `Show Answers` toggles the answer column's visibility.
-- `Reveal All` reveals every answer cell without changing question-column
-  visibility.
-- `Hide All` hides every answer cell without changing question-column
-  visibility.
-- Clicking an individual answer cell reveals or hides only that cell.
-- Hidden answers use an understandable label and remain keyboard operable.
+- `Hide Left` / `Reveal Left` toggles Question / Term content in every card
+  while keeping the left column visible.
+- `Hide Right` / `Reveal Right` toggles Answer / Definition content in every
+  card while keeping the right column visible.
+- Clicking an individual left or right cell reveals or hides only that cell.
+- Hidden cells use an understandable label and remain keyboard operable.
 
-Questions are visible and answers hidden by default unless the user changes
-the study preference. Visibility is presentation state, not content data, and
-must not edit the stored entry.
+Both columns remain visible in the layout by default. Question / Term content is
+revealed by default, while Answer / Definition content is hidden by default.
+Individual left and right content remains independently revealable, and
+visibility is presentation state rather than content data.
 
 On narrow screens, the two-column view may stack while preserving the question
 and answer relationship. Controls need accessible names and visible state.
@@ -138,6 +153,14 @@ Flashcard Mode shows one question at a time:
 - Previous and Next move through the current ordered set
 - Current position is visible, such as `3 of 12`
 - Optional Shuffle changes the session order without changing stored entries
+
+Planned entry-type orientation:
+
+- Question & Answer uses Question first by default.
+- Term & Definition uses Definition first by default.
+- Each entry type has its own configurable front-side preference.
+- Mixed flashcard sessions automatically respect each entry's type.
+- Preferences are saved locally.
 - Keyboard controls support flip, previous, and next actions
 - The card and controls expose sensible semantics to assistive technology
 
