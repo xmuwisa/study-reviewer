@@ -135,8 +135,10 @@ Controls behave as follows:
 - Clicking an individual left or right cell reveals or hides only that cell.
 - Hidden cells use an understandable label and remain keyboard operable.
 
-Both columns are visible by default. Individual answers remain independently
-revealable, and visibility is presentation state rather than content data.
+Both columns remain visible in the layout by default. Question / Term content is
+revealed by default, while Answer / Definition content is hidden by default.
+Individual left and right content remains independently revealable, and
+visibility is presentation state rather than content data.
 
 On narrow screens, the two-column view may stack while preserving the question
 and answer relationship. Controls need accessible names and visible state.

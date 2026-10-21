@@ -142,7 +142,8 @@ prefix conventions when creating them.
 - Responsive two-column List Mode
 - Question / Term and Answer / Definition column visibility toggles
 - Individual left and right content reveal/hide controls
-- Both list columns visible by default
+- Both list columns remain visible by default, with Question / Term content
+  revealed and Answer / Definition content hidden until revealed
 - Responsive full-screen mobile navigation panel with active-page state
 
 **Acceptance criteria**

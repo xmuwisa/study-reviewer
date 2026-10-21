@@ -608,9 +608,14 @@ export function TopicStudyPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
+  const topicEntryIds = useMemo(() => getEntriesForTopic(data, topicId).map((entry) => entry.id), [data, topicId])
   const [hiddenLeft, setHiddenLeft] = useState<Set<string>>(() => new Set())
-  const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => new Set())
+  const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => new Set(topicEntryIds))
+  const [visibilityTopicId, setVisibilityTopicId] = useState(topicId)
+  const topicEntryIdsRef = useRef(topicEntryIds)
   const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
+
+  topicEntryIdsRef.current = topicEntryIds
 
   useEffect(() => {
     if (topic && topic.categoryId === categoryId && openedTopicId.current !== topic.id) {
@@ -620,9 +625,10 @@ export function TopicStudyPage() {
   }, [categoryId, openTopic, topic])
 
   useEffect(() => {
+    setVisibilityTopicId(topicId)
     setHiddenLeft(new Set())
-    setHiddenRight(new Set())
-  }, [topic?.id])
+    setHiddenRight(new Set(topicEntryIdsRef.current))
+  }, [topicId])
 
   if (!category || !topic || topic.categoryId !== category.id) return <NotFoundPage />
   const currentTopic = topic
@@ -650,8 +656,10 @@ export function TopicStudyPage() {
     setHiddenEntries(allEntriesAreHidden ? new Set() : new Set(entries.map((entry) => entry.id)))
   }
 
-  const allLeftHidden = entries.length > 0 && entries.every((entry) => hiddenLeft.has(entry.id))
-  const allRightHidden = entries.length > 0 && entries.every((entry) => hiddenRight.has(entry.id))
+  const effectiveHiddenLeft = visibilityTopicId === topicId ? hiddenLeft : new Set<string>()
+  const effectiveHiddenRight = visibilityTopicId === topicId ? hiddenRight : new Set(topicEntryIds)
+  const allLeftHidden = entries.length > 0 && entries.every((entry) => effectiveHiddenLeft.has(entry.id))
+  const allRightHidden = entries.length > 0 && entries.every((entry) => effectiveHiddenRight.has(entry.id))
 
   return (
     <div>
@@ -676,11 +684,11 @@ export function TopicStudyPage() {
           label="Entry search"
           rightControls={
             <>
-              <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, hiddenLeft)}>
+              <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, effectiveHiddenLeft)}>
                 {allLeftHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
                 {allLeftHidden ? 'Reveal Left' : 'Hide Left'}
               </Button>
-              <Button type="button" size="sm" variant={allRightHidden ? 'ghost' : 'secondary'} aria-pressed={!allRightHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenRight, hiddenRight)}>
+              <Button type="button" size="sm" variant={allRightHidden ? 'ghost' : 'secondary'} aria-pressed={!allRightHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenRight, effectiveHiddenRight)}>
                 {allRightHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
                 {allRightHidden ? 'Reveal Right' : 'Hide Right'}
               </Button>
@@ -693,8 +701,8 @@ export function TopicStudyPage() {
         ) : (
           <EntryList
             entries={entries}
-            hiddenLeft={hiddenLeft}
-            hiddenRight={hiddenRight}
+            hiddenLeft={effectiveHiddenLeft}
+            hiddenRight={effectiveHiddenRight}
             onToggleLeft={(entryId) => toggleHiddenEntry(setHiddenLeft, entryId)}
             onToggleRight={(entryId) => toggleHiddenEntry(setHiddenRight, entryId)}
             onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}

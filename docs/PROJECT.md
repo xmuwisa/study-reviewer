@@ -176,8 +176,9 @@ the same entries and should not create separate copies of study data.
 
 ### Predictable visibility controls
 
-Both List Mode columns are visible by default. The controls have separate
-responsibilities:
+Both List Mode columns remain visible by default. Question / Term content is
+revealed by default, while Answer / Definition content is hidden by default.
+The controls have separate responsibilities:
 
 - `Hide Left` / `Reveal Left` toggles the question or term content in every
   card while keeping the left column visible.

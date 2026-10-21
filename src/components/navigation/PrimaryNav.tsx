@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom'
 
 import { navigationItems } from '@/app/routes'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 export function PrimaryNav() {
@@ -36,20 +36,17 @@ export function MobileNav() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button aria-label="Open navigation menu" size="icon" variant="ghost" />}>
+      <DialogTrigger render={<Button aria-label="Open navigation menu" className="[&_svg]:size-6" size="icon" variant="ghost" />}>
         <Menu aria-hidden="true" />
       </DialogTrigger>
       <DialogContent
         showCloseButton={false}
-        className="!top-0 !left-0 !h-dvh !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none bg-background p-6 duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right sm:hidden"
+        className="!top-0 !left-0 !h-dvh !w-full !max-w-none !translate-x-0 !translate-y-0 !rounded-none bg-background p-6 ease-out duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right data-closed:ease-in sm:hidden"
       >
-        <DialogHeader className="flex-row items-center justify-between gap-4">
-          <DialogTitle>Navigate</DialogTitle>
-          <DialogClose render={<Button aria-label="Close navigation menu" size="icon" variant="ghost" />}>
-            <X aria-hidden="true" />
-          </DialogClose>
-        </DialogHeader>
-        <nav aria-label="Mobile navigation" className="flex flex-col gap-2 pt-6">
+        <DialogClose render={<Button aria-label="Close navigation menu" className="absolute top-4 right-4" size="icon" variant="ghost" />}>
+          <X aria-hidden="true" />
+        </DialogClose>
+        <nav aria-label="Mobile navigation" className="flex flex-col gap-2 pr-12 pt-1">
           {navigationItems.map(({ label, href, icon: Icon, end }) => (
             <DialogClose
               key={href}
