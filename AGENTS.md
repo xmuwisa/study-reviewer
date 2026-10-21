@@ -40,8 +40,11 @@
 - Allow multiple focused Conventional Commits within a phase.
 - Do not create additional branches or pull requests for individual fixes or refinements.
 - Review the diff and stage only relevant files before committing.
-- Require explicit approval before merging pull requests, deleting branches, force-pushing, or rewriting history.
-- Preserve unrelated work and synchronize `main` safely after an approved merge.
+- Keep phase pull requests open for review until explicit approval to merge is provided.
+- Preserve every phase branch locally and remotely after merging; never automatically delete merged branches or enable automatic branch deletion on GitHub.
+- Require explicit approval before merging pull requests, deleting branches, force-pushing, or rewriting history. Branch deletion is never part of routine closeout.
+- Preserve original commits, authorship, timestamps, and Git history. Never reset, rebase, force-push, or rewrite history without explicit approval.
+- Preserve unrelated work and synchronize `main` safely with `origin/main` after an approved merge, without deleting branches.
 
 ## Pull requests and attribution
 
