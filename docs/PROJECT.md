@@ -1,6 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: planning only. The application has not yet been implemented.
+Status: Phase 1 is merged into `main`; Phase 2 local data foundations are in
+progress on `feat/local-data-model`. Product features remain planned for later
+phases.
 
 ## Product vision
 
