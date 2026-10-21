@@ -20,13 +20,14 @@ The project uses Bun for package management and local development commands.
 
 ## Project status
 
-The Phase 1 application foundation has been transferred to the active
-`feat/app-foundation` branch: a responsive React shell with centered top
-navigation, route placeholders, local styling tokens, reusable UI primitives,
-and a static Pomodoro widget. Testing infrastructure and test coverage are
-intentionally deferred until explicitly requested. Study data, CRUD flows,
-study modes, persistence, and the functional Pomodoro timer remain planned for
-later phases.
+The Phase 1 application foundation is merged into `main`: a responsive React
+shell with centered top navigation, route placeholders, local styling tokens,
+reusable UI primitives, and a static Pomodoro widget. Phase 2 is active on
+`feat/local-data-model` and adds the typed local data model, validation,
+versioned localStorage adapter, and JSON export foundation. Testing
+infrastructure and test coverage remain intentionally deferred until
+explicitly requested. CRUD flows, study modes, and the functional Pomodoro
+timer remain planned for later phases.
 
 The product and implementation roadmap are documented in:
 
