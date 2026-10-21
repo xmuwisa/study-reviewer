@@ -119,8 +119,8 @@ Each card uses `Question` and `Answer` headers for Question & Answer entries or
 actions belong to the complete card and are presented in a shared action area.
 The action area is visible on touch devices and appears on desktop hover or
 keyboard focus.
-Visible entry content uses plain card surfaces, while hidden cells retain a
-deeper blue-tinted surface behind their Reveal placeholder.
+Visible and hidden entry content use the same plain card surfaces; hidden cells
+replace only their text with a clickable Reveal placeholder.
 
 The search and sorting toolbar keeps the left/right visibility controls beside
 the sort control on desktop and places them below the search controls on
