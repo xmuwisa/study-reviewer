@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phase 1 is merged into `main`; Phase 2 local data foundations are in
-progress on `feat/local-data-model`. Product features remain planned for later
-phases.
+Status: Phases 1–2 are merged into `main`; Phase 3 category and topic CRUD is
+complete on `feat/category-topic-crud` and ready for pull request review. Entry
+and study features remain planned for later phases.
 
 ## Product vision
 

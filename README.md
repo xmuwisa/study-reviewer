@@ -20,14 +20,13 @@ The project uses Bun for package management and local development commands.
 
 ## Project status
 
-The Phase 1 application foundation is merged into `main`: a responsive React
-shell with centered top navigation, route placeholders, local styling tokens,
-reusable UI primitives, and a static Pomodoro widget. Phase 2 is active on
-`feat/local-data-model` and adds the typed local data model, validation,
-versioned localStorage adapter, and JSON export foundation. Testing
-infrastructure and test coverage remain intentionally deferred until
-explicitly requested. CRUD flows, study modes, and the functional Pomodoro
-timer remain planned for later phases.
+The Phase 1 application foundation and Phase 2 local data foundation are
+merged into `main`. Phase 3 is complete on `feat/category-topic-crud` and adds
+functional category and topic management with local persistence, search,
+sorting, recent access activity, safe cascade deletion, and responsive CRUD
+interfaces. Testing infrastructure and test coverage remain intentionally
+deferred until explicitly requested. Entry CRUD, study modes, and the
+functional Pomodoro timer remain planned for later phases.
 
 The product and implementation roadmap are documented in:
 
@@ -42,5 +41,6 @@ bun install
 bun run dev
 ```
 
-The current shell is intentionally a foundation. It does not yet provide
-study-data creation, editing, persistence, or timer functionality.
+The current implementation provides category and topic creation, editing,
+navigation, deletion, and local persistence. Entry management, study modes,
+and timer functionality remain planned for later phases.

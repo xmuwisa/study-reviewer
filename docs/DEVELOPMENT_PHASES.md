@@ -1,10 +1,12 @@
 # Study Reviewer Development Phases
 
 This roadmap is for implementation after the planning documents are approved.
-The Phase 1 application foundation is merged into `main`: the responsive
-React/Vite shell, Tailwind and shadcn styling, route placeholders, reusable UI
-primitives, and static Pomodoro widget are present. Phase 2 local data
-foundations are being implemented on the active `feat/local-data-model` branch.
+The Phase 1 application foundation and Phase 2 local data foundations are
+merged into `main`: the responsive React/Vite shell, Tailwind and shadcn
+styling, route placeholders, reusable UI primitives, typed records, runtime
+validation, and versioned localStorage adapter are present. Phase 3 category
+and topic CRUD is complete on the active `feat/category-topic-crud` branch and
+ready for pull request review.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
@@ -92,6 +94,8 @@ prefix conventions when creating them.
 ### Phase 3 — Categories, topics, and navigation
 
 **Suggested branch:** `feat/category-topic-crud`
+
+**Status:** Complete on `feat/category-topic-crud`; pending pull request review.
 
 **Dependencies:** Phases 1–2.
 
