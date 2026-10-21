@@ -20,10 +20,12 @@ The project uses Bun for package management and local development commands.
 
 ## Project status
 
-The Phase 1 application foundation is now implemented: a responsive React
-shell with centered top navigation, route placeholders, local styling tokens,
-reusable UI primitives, and initial Vitest and Playwright coverage. Study data,
-CRUD flows, study modes, persistence, and the Pomodoro timer remain planned for
+The Phase 1 application foundation has been transferred to the active
+`feat/app-foundation` branch: a responsive React shell with centered top
+navigation, route placeholders, local styling tokens, reusable UI primitives,
+and a static Pomodoro widget. Testing infrastructure and test coverage are
+intentionally deferred until explicitly requested. Study data, CRUD flows,
+study modes, persistence, and the functional Pomodoro timer remain planned for
 later phases.
 
 The product and implementation roadmap are documented in:
