@@ -141,14 +141,14 @@ prefix conventions when creating them.
 - Newest, oldest, and alphabetical sorting
 - Responsive two-column List Mode
 - Question / Term and Answer / Definition column visibility toggles
-- Individual answer reveal/hide controls
+- Individual left and right content reveal/hide controls
 - Both list columns visible by default
 
 **Acceptance criteria**
 
 - Users can manage entries without losing unrelated content.
 - Required-field and storage errors are clear and preserve entered values.
-- Global and individual visibility controls have predictable, accessible state.
+- Global and individual left/right visibility controls have predictable, accessible state.
 - List Mode stacks or adapts on narrow screens without losing relationships.
 
 **Verification**

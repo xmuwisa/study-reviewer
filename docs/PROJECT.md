@@ -179,10 +179,11 @@ the same entries and should not create separate copies of study data.
 Both List Mode columns are visible by default. The controls have separate
 responsibilities:
 
-- `Hide Left` / `Reveal Left` toggles the question or term column.
-- `Hide Right` / `Reveal Right` toggles the answer or definition column.
-- Clicking an individual answer or definition cell reveals or hides only that
-  cell.
+- `Hide Left` / `Reveal Left` toggles the question or term content in every
+  card while keeping the left column visible.
+- `Hide Right` / `Reveal Right` toggles the answer or definition content in
+  every card while keeping the right column visible.
+- Clicking an individual left or right cell reveals or hides only that cell.
 
 These controls must not silently change saved content or confuse column
 visibility with individual answer reveal state.

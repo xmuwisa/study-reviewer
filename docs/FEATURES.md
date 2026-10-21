@@ -19,8 +19,10 @@ exist.
 ## Application shell and navigation
 
 The app shell provides access to Dashboard, Categories, and Settings, with
-breadcrumbs on category and topic detail views. The active location is visible
-to keyboard and screen-reader users. A context-aware floating Add button is
+breadcrumbs on category and topic detail views. Topic breadcrumbs link through
+Home, Categories, and the parent category before identifying the current topic.
+The active location is visible to keyboard and screen-reader users. A
+context-aware floating Add button is
 available while scrolling and opens the appropriate creation form for the
 current page. It must not overlap the persistent Pomodoro widget or obscure
 content on mobile.
@@ -104,19 +106,25 @@ fails, and report storage failures without claiming the change was saved.
 
 ### List Mode
 
-List Mode displays entries in a responsive two-column layout:
+List Mode displays each entry in an individual responsive two-column card:
 
 | Column | Content |
 | --- | --- |
 | Question / Term | Question or term text |
 | Answer / Definition | Answer or definition text, visible according to state |
 
+Each card uses `Question` and `Answer` headers for Question & Answer entries or
+`Term` and `Definition` headers for Term & Definition entries. Edit and Delete
+actions belong to the complete card and are presented in a shared action area.
+
 Controls behave as follows:
 
-- `Hide Left` / `Reveal Left` toggles the Question / Term column.
-- `Hide Right` / `Reveal Right` toggles the Answer / Definition column.
-- Clicking an individual answer cell reveals or hides only that cell.
-- Hidden answers use an understandable label and remain keyboard operable.
+- `Hide Left` / `Reveal Left` toggles Question / Term content in every card
+  while keeping the left column visible.
+- `Hide Right` / `Reveal Right` toggles Answer / Definition content in every
+  card while keeping the right column visible.
+- Clicking an individual left or right cell reveals or hides only that cell.
+- Hidden cells use an understandable label and remain keyboard operable.
 
 Both columns are visible by default. Individual answers remain independently
 revealable, and visibility is presentation state rather than content data.

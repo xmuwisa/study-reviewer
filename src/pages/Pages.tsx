@@ -14,7 +14,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { Dispatch, KeyboardEvent, SetStateAction } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialog'
@@ -30,7 +30,6 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
-import { cn } from '@/lib/utils'
 import {
   filterAndSortCategories,
   filterAndSortEntries,
@@ -153,7 +152,7 @@ function CountLabel({ count, singular, plural }: { count: number; singular: stri
 
 function EntryActions({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div className="flex shrink-0 items-center gap-0" aria-label="Entry actions">
+    <div className="flex shrink-0 items-center gap-0" role="group" aria-label="Entry actions">
       <Button aria-label={`Edit entry: ${entry.question}`} size="icon-sm" variant="ghost" onClick={onEdit}>
         <Pencil aria-hidden="true" />
       </Button>
@@ -185,76 +184,72 @@ function EntryEmptyState({ hasSearch, onCreate, onClearSearch }: { hasSearch: bo
 
 function EntryList({
   entries,
-  showLeft,
-  showRight,
-  revealedAnswers,
-  onToggleAnswer,
+  hiddenLeft,
+  hiddenRight,
+  onToggleLeft,
+  onToggleRight,
   onEdit,
   onDelete,
 }: {
   entries: Entry[]
-  showLeft: boolean
-  showRight: boolean
-  revealedAnswers: Set<string>
-  onToggleAnswer: (entryId: string) => void
+  hiddenLeft: Set<string>
+  hiddenRight: Set<string>
+  onToggleLeft: (entryId: string) => void
+  onToggleRight: (entryId: string) => void
   onEdit: (entry: Entry) => void
   onDelete: (entry: Entry) => void
 }) {
-  const hasBothColumns = showLeft && showRight
-
-  if (!showLeft && !showRight) {
-    return (
-      <Card className="bg-card/60">
-        <CardContent className="p-8 text-center text-base leading-relaxed text-muted-foreground">
-          Turn on Questions or Answers to view this topic’s entries.
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <Card className="overflow-hidden bg-card/60 py-0">
-      <div className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
-        {showLeft && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Question / Term</div>}
-        {showRight && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Answer / Definition</div>}
-      </div>
-      <CardContent className="flex flex-col gap-px bg-muted/30 p-0">
-        {entries.map((entry) => {
-          const answerIsVisible = revealedAnswers.has(entry.id)
-          return (
-            <div key={entry.id} className="bg-muted/30">
-              <div className="flex items-center justify-between bg-card/90 px-5 pt-3">
-                <Badge variant="secondary" className="w-fit border-0">
-                  {entry.type === 'term-definition' ? 'Term & Definition' : 'Question & Answer'}
-                </Badge>
+    <div className="flex flex-col gap-4">
+      {entries.map((entry) => {
+        const leftHidden = hiddenLeft.has(entry.id)
+        const rightHidden = hiddenRight.has(entry.id)
+        const leftLabel = entry.type === 'term-definition' ? 'Term' : 'Question'
+        const rightLabel = entry.type === 'term-definition' ? 'Definition' : 'Answer'
+
+        return (
+          <Card key={entry.id} className="overflow-hidden bg-card/60 py-0">
+            <CardContent className="p-0">
+              <div className="flex justify-end bg-card/90 px-5 py-2">
                 <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
               </div>
-              <div className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
-                {showLeft && (
-                  <div className="flex min-w-0 flex-col gap-3 bg-card/90 p-5 pt-2">
-                    <p className="min-w-0 whitespace-pre-wrap text-base leading-relaxed text-foreground">{entry.question}</p>
-                  </div>
-                )}
-                {showRight && (
-                  <div className="min-w-0 bg-card/90 p-3 pt-2 sm:p-5 sm:pt-2">
+              <div className="grid gap-px bg-muted/30 sm:grid-cols-2">
+                <div className="min-w-0 bg-card/90">
+                  <div className="bg-muted/35 px-5 py-3 text-base font-semibold text-foreground">{leftLabel}</div>
+                  <div className="p-5">
                     <Button
                       type="button"
                       variant="ghost"
                       className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
-                      aria-expanded={answerIsVisible}
-                      aria-label={`${answerIsVisible ? 'Hide' : 'Show'} ${entry.type === 'term-definition' ? 'definition' : 'answer'} for ${entry.question}`}
-                      onClick={() => onToggleAnswer(entry.id)}
+                      aria-expanded={!leftHidden}
+                      aria-label={`${leftHidden ? 'Reveal' : 'Hide'} ${leftLabel.toLowerCase()} for ${entry.question}`}
+                      onClick={() => onToggleLeft(entry.id)}
                     >
-                      {answerIsVisible ? entry.answer : <span className="text-muted-foreground">{entry.type === 'term-definition' ? 'Definition' : 'Answer'} hidden · Reveal</span>}
+                      {leftHidden ? <span className="text-muted-foreground">{leftLabel} hidden · Reveal</span> : <span className="whitespace-pre-wrap">{entry.question}</span>}
                     </Button>
                   </div>
-                )}
+                </div>
+                <div className="min-w-0 bg-card/90">
+                  <div className="bg-muted/35 px-5 py-3 text-base font-semibold text-foreground">{rightLabel}</div>
+                  <div className="p-5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
+                      aria-expanded={!rightHidden}
+                      aria-label={`${rightHidden ? 'Reveal' : 'Hide'} ${rightLabel.toLowerCase()} for ${entry.question}`}
+                      onClick={() => onToggleRight(entry.id)}
+                    >
+                      {rightHidden ? <span className="text-muted-foreground">{rightLabel} hidden · Reveal</span> : <span className="whitespace-pre-wrap">{entry.answer}</span>}
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          )
-        })}
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        )
+      })}
+    </div>
   )
 }
 
@@ -610,9 +605,8 @@ export function TopicStudyPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
   const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
-  const [showLeft, setShowLeft] = useState(true)
-  const [showRight, setShowRight] = useState(true)
-  const [revealedAnswers, setRevealedAnswers] = useState<Set<string>>(() => new Set())
+  const [hiddenLeft, setHiddenLeft] = useState<Set<string>>(() => new Set())
+  const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => new Set())
   const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
 
   useEffect(() => {
@@ -623,9 +617,8 @@ export function TopicStudyPage() {
   }, [categoryId, openTopic, topic])
 
   useEffect(() => {
-    setShowLeft(true)
-    setShowRight(true)
-    setRevealedAnswers(new Set())
+    setHiddenLeft(new Set())
+    setHiddenRight(new Set())
   }, [topic?.id])
 
   if (!category || !topic || topic.categoryId !== category.id) return <NotFoundPage />
@@ -640,14 +633,22 @@ export function TopicStudyPage() {
     return editingEntry ? updateEntry(editingEntry.id, values) : createEntry(currentTopic.id, values)
   }
 
-  function toggleAnswer(entryId: string) {
-    setRevealedAnswers((current) => {
+  function toggleHiddenEntry(setHiddenEntries: Dispatch<SetStateAction<Set<string>>>, entryId: string) {
+    setHiddenEntries((current) => {
       const next = new Set(current)
       if (next.has(entryId)) next.delete(entryId)
       else next.add(entryId)
       return next
     })
   }
+
+  function toggleAllHidden(setHiddenEntries: Dispatch<SetStateAction<Set<string>>>, hiddenEntries: Set<string>) {
+    const allEntriesAreHidden = entries.length > 0 && entries.every((entry) => hiddenEntries.has(entry.id))
+    setHiddenEntries(allEntriesAreHidden ? new Set() : new Set(entries.map((entry) => entry.id)))
+  }
+
+  const allLeftHidden = entries.length > 0 && entries.every((entry) => hiddenLeft.has(entry.id))
+  const allRightHidden = entries.length > 0 && entries.every((entry) => hiddenRight.has(entry.id))
 
   return (
     <div>
@@ -673,13 +674,13 @@ export function TopicStudyPage() {
         />
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card/60 p-2" aria-label="List study controls">
-          <Button type="button" size="sm" variant={showLeft ? 'secondary' : 'ghost'} aria-pressed={showLeft} onClick={() => setShowLeft((current) => !current)}>
-            {showLeft ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
-            {showLeft ? 'Hide Left' : 'Reveal Left'}
+          <Button type="button" size="sm" variant={allLeftHidden ? 'ghost' : 'secondary'} aria-pressed={!allLeftHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenLeft, hiddenLeft)}>
+            {allLeftHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+            {allLeftHidden ? 'Reveal Left' : 'Hide Left'}
           </Button>
-          <Button type="button" size="sm" variant={showRight ? 'secondary' : 'ghost'} aria-pressed={showRight} onClick={() => setShowRight((current) => !current)}>
-            {showRight ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
-            {showRight ? 'Hide Right' : 'Reveal Right'}
+          <Button type="button" size="sm" variant={allRightHidden ? 'ghost' : 'secondary'} aria-pressed={!allRightHidden} disabled={entries.length === 0} onClick={() => toggleAllHidden(setHiddenRight, hiddenRight)}>
+            {allRightHidden ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+            {allRightHidden ? 'Reveal Right' : 'Hide Right'}
           </Button>
         </div>
 
@@ -688,10 +689,10 @@ export function TopicStudyPage() {
         ) : (
           <EntryList
             entries={entries}
-            showLeft={showLeft}
-            showRight={showRight}
-            revealedAnswers={revealedAnswers}
-            onToggleAnswer={toggleAnswer}
+            hiddenLeft={hiddenLeft}
+            hiddenRight={hiddenRight}
+            onToggleLeft={(entryId) => toggleHiddenEntry(setHiddenLeft, entryId)}
+            onToggleRight={(entryId) => toggleHiddenEntry(setHiddenRight, entryId)}
             onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
             onDelete={setDeletingEntry}
           />
