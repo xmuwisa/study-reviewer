@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
 import {
@@ -13,6 +13,7 @@ import {
   updateCategory,
   updateEntry,
   updateTopic,
+  updateSettings,
 } from '@/lib/study-operations'
 import { StudyContext, type StorageNotice, type StudyContextValue } from '@/lib/study-context'
 import { createStudyRepository } from '@/lib/study-storage'
@@ -32,6 +33,22 @@ export function StudyProvider({ children }: { children: ReactNode }) {
   const [storageNotice, setStorageNotice] = useState<StorageNotice | null>(() =>
     getInitialNotice(initialLoad.status, 'message' in initialLoad ? initialLoad.message : undefined),
   )
+
+  useEffect(() => {
+    const root = document.documentElement
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const applyTheme = () => {
+      const isDark = data.settings.theme === 'dark' || (data.settings.theme === 'system' && mediaQuery.matches)
+      root.classList.toggle('dark', isDark)
+      root.style.colorScheme = isDark ? 'dark' : 'light'
+    }
+
+    applyTheme()
+    if (data.settings.theme !== 'system') return
+
+    mediaQuery.addEventListener('change', applyTheme)
+    return () => mediaQuery.removeEventListener('change', applyTheme)
+  }, [data.settings.theme])
 
   const commit = useCallback(
     (nextData: StudyData) => {
@@ -74,6 +91,7 @@ export function StudyProvider({ children }: { children: ReactNode }) {
   const deleteEntryAction = useCallback((entryId: RecordId) => commit(deleteEntry(data, entryId)), [commit, data])
   const openCategory = useCallback((categoryId: RecordId) => commit(markCategoryAccessed(data, categoryId)), [commit, data])
   const openTopic = useCallback((topicId: RecordId) => commit(markTopicAccessed(data, topicId)), [commit, data])
+  const updateSettingsAction = useCallback((patch: Parameters<typeof updateSettings>[1]) => commit(updateSettings(data, patch)), [commit, data])
   const clearStorageNotice = useCallback(() => setStorageNotice(null), [])
 
   const value = useMemo<StudyContextValue>(
@@ -92,6 +110,7 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       deleteEntry: deleteEntryAction,
       openCategory,
       openTopic,
+      updateSettings: updateSettingsAction,
     }),
     [
       clearStorageNotice,
@@ -108,6 +127,7 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       updateEntryAction,
       updateTopicAction,
       createTopicAction,
+      updateSettingsAction,
     ],
   )
 

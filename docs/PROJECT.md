@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phases 1–5 are merged into `main`; Phase 6 Dashboard Overview is in
-progress on `feat/dashboard-overview`. Later study features remain planned for
-later phases.
+Status: Phases 1–6 are merged into `main`; Phase 7 Settings and Preferences is
+complete on `feat/settings-preferences` and ready for review. Later study
+features remain planned for later phases.
 
 ## Product vision
 
