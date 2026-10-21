@@ -1,8 +1,11 @@
 import {
   createCategoryRecord,
+  createEntryRecord,
   createTopicRecord,
   type Category,
   type CategoryInput,
+  type Entry,
+  type EntryInput,
   type RecordId,
   type StudyData,
   type Timestamp,
@@ -12,6 +15,7 @@ import {
 
 export type CategorySort = 'alphabetical' | 'reverse-alphabetical' | 'recent'
 export type TopicSort = 'alphabetical' | 'reverse-alphabetical' | 'recent'
+export type EntrySort = 'newest' | 'oldest' | 'alphabetical'
 
 const MAX_RECENT_ACTIVITY = 20
 
@@ -120,6 +124,32 @@ export function deleteTopic(data: StudyData, topicId: RecordId): StudyData {
   }
 }
 
+export function createEntry(data: StudyData, topicId: RecordId, input: EntryInput, now = Date.now()): StudyData {
+  const record = createEntryRecord(topicId, input, now)
+  if (!record.question || !record.answer || !data.topics.some((topic) => topic.id === topicId)) return data
+
+  return { ...data, entries: [...data.entries, record] }
+}
+
+export function updateEntry(data: StudyData, entryId: RecordId, input: EntryInput, now = Date.now()): StudyData {
+  const question = input.question.trim()
+  const answer = input.answer.trim()
+  if (!question || !answer || !data.entries.some((entry) => entry.id === entryId)) return data
+
+  return {
+    ...data,
+    entries: data.entries.map((entry) =>
+      entry.id === entryId ? { ...entry, question, answer, updatedAt: now } : entry,
+    ),
+  }
+}
+
+export function deleteEntry(data: StudyData, entryId: RecordId): StudyData {
+  if (!data.entries.some((entry) => entry.id === entryId)) return data
+
+  return { ...data, entries: data.entries.filter((entry) => entry.id !== entryId) }
+}
+
 export function markCategoryAccessed(data: StudyData, categoryId: RecordId, accessedAt = Date.now()): StudyData {
   if (!data.categories.some((category) => category.id === categoryId)) return data
 
@@ -166,4 +196,21 @@ export function filterAndSortTopics(data: StudyData, categoryId: RecordId, searc
   if (sort === 'recent') return sortByRecent(filtered)
 
   return sortByName(filtered, sort === 'reverse-alphabetical' ? 'descending' : 'ascending')
+}
+
+export function filterAndSortEntries(data: StudyData, topicId: RecordId, searchTerm: string, sort: EntrySort): Entry[] {
+  const normalizedTerm = normalizeSearchTerm(searchTerm)
+  const filtered = data.entries.filter((entry) =>
+    entry.topicId === topicId &&
+    `${entry.question} ${entry.answer}`.toLocaleLowerCase().includes(normalizedTerm),
+  )
+
+  if (sort === 'alphabetical') {
+    return [...filtered].sort((left, right) => compareAlphabetically(left.question, right.question) || left.id.localeCompare(right.id))
+  }
+
+  return [...filtered].sort((left, right) => {
+    const timestampDifference = (sort === 'newest' ? right.createdAt - left.createdAt : left.createdAt - right.createdAt)
+    return timestampDifference || compareAlphabetically(left.question, right.question) || left.id.localeCompare(right.id)
+  })
 }

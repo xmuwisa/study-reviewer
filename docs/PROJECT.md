@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phases 1–2 are merged into `main`; Phase 3 category and topic CRUD is
-complete on `feat/category-topic-crud` and ready for pull request review. Entry
-and study features remain planned for later phases.
+Status: Phases 1–3 are merged into `main`; Phase 4 entry management and List
+Study Mode are in progress on `feat/entry-list-study`. Flashcard and later
+study features remain planned for later phases.
 
 ## Product vision
 

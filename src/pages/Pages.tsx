@@ -3,6 +3,8 @@ import {
   ArrowDownAZ,
   ArrowUpRight,
   BookOpenCheck,
+  Eye,
+  EyeOff,
   FolderPlus,
   Layers3,
   Pencil,
@@ -17,6 +19,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialog'
 import { CollectionFormDialog, type CollectionFormValues } from '@/components/study/CollectionFormDialog'
+import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
+import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,16 +28,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Topic } from '@/lib/study-data'
+import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
+import { cn } from '@/lib/utils'
 import {
   filterAndSortCategories,
+  filterAndSortEntries,
   filterAndSortTopics,
   type CategorySort,
+  type EntrySort,
   type TopicSort,
 } from '@/lib/study-operations'
 
 const EMPTY_FORM_VALUES: CollectionFormValues = { name: '', description: '' }
+const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { question: '', answer: '' }
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-base font-medium text-muted-foreground">{children}</p>
@@ -141,6 +149,113 @@ function CollectionToolbar({
 
 function CountLabel({ count, singular, plural }: { count: number; singular: string; plural: string }) {
   return <span>{count} {count === 1 ? singular : plural}</span>
+}
+
+function EntryActions({ entry, onEdit, onDelete }: { entry: Entry; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="flex shrink-0 items-center gap-0">
+      <Button aria-label={`Edit entry: ${entry.question}`} size="icon-sm" variant="ghost" onClick={onEdit}>
+        <Pencil aria-hidden="true" />
+      </Button>
+      <Button aria-label={`Delete entry: ${entry.question}`} size="icon-sm" variant="ghost" onClick={onDelete}>
+        <Trash2 aria-hidden="true" />
+      </Button>
+    </div>
+  )
+}
+
+function EntryEmptyState({ hasSearch, onCreate, onClearSearch }: { hasSearch: boolean; onCreate: () => void; onClearSearch: () => void }) {
+  return (
+    <Card className="bg-card/60">
+      <Empty className="min-h-64 p-8">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><BookOpenCheck aria-hidden="true" /></EmptyMedia>
+          <EmptyTitle>{hasSearch ? 'No entries found' : 'No entries yet'}</EmptyTitle>
+          <EmptyDescription>
+            {hasSearch ? 'Try a different search term or clear the search to see every question.' : 'Add your first question and answer to start studying this topic.'}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          {hasSearch ? <Button variant="outline" onClick={onClearSearch}>Clear search</Button> : <Button onClick={onCreate}><Plus aria-hidden="true" data-icon="inline-start" /> Create entry</Button>}
+        </EmptyContent>
+      </Empty>
+    </Card>
+  )
+}
+
+function EntryList({
+  entries,
+  showQuestions,
+  showAnswers,
+  revealedAnswers,
+  onToggleAnswer,
+  onEdit,
+  onDelete,
+}: {
+  entries: Entry[]
+  showQuestions: boolean
+  showAnswers: boolean
+  revealedAnswers: Set<string>
+  onToggleAnswer: (entryId: string) => void
+  onEdit: (entry: Entry) => void
+  onDelete: (entry: Entry) => void
+}) {
+  const hasBothColumns = showQuestions && showAnswers
+
+  if (!showQuestions && !showAnswers) {
+    return (
+      <Card className="bg-card/60">
+        <CardContent className="p-8 text-center text-base leading-relaxed text-muted-foreground">
+          Turn on Questions or Answers to view this topic’s entries.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="overflow-hidden bg-card/60 py-0">
+      <div className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
+        {showQuestions && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Question</div>}
+        {showAnswers && <div className="bg-muted/35 p-5 text-base font-semibold text-foreground">Answer</div>}
+      </div>
+      <CardContent className="flex flex-col gap-px bg-muted/30 p-0">
+        {entries.map((entry) => {
+          const answerIsVisible = revealedAnswers.has(entry.id)
+          return (
+            <div key={entry.id} className={cn('grid gap-px bg-muted/30', hasBothColumns && 'sm:grid-cols-2')}>
+              {showQuestions && (
+                <div className="flex min-w-0 flex-col gap-4 bg-card/90 p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="min-w-0 flex-1 whitespace-pre-wrap text-base leading-relaxed text-foreground">{entry.question}</p>
+                    <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
+                  </div>
+                </div>
+              )}
+              {showAnswers && (
+                <div className="min-w-0 bg-card/90 p-3 sm:p-5">
+                  {!showQuestions && (
+                    <div className="mb-3 flex justify-end">
+                      <EntryActions entry={entry} onEdit={() => onEdit(entry)} onDelete={() => onDelete(entry)} />
+                    </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-auto min-h-20 w-full justify-start whitespace-normal rounded-xl bg-background/45 p-5 text-left text-base font-normal leading-relaxed hover:bg-background/70"
+                    aria-expanded={answerIsVisible}
+                    aria-label={`${answerIsVisible ? 'Hide' : 'Show'} answer for ${entry.question}`}
+                    onClick={() => onToggleAnswer(entry.id)}
+                  >
+                    {answerIsVisible ? entry.answer : <span className="text-muted-foreground">Answer hidden · Show answer</span>}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
 }
 
 function CategoryCard({
@@ -283,9 +398,9 @@ export function DashboardPage() {
       <div className="mt-9 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <Card className="relative overflow-hidden bg-primary text-primary-foreground">
           <CardHeader className="relative gap-3 p-6 sm:p-8">
-            <Badge variant="secondary" className="w-fit border-0 bg-primary-foreground/10 text-primary-foreground">Phase 3 · Categories</Badge>
+            <Badge variant="secondary" className="w-fit border-0 bg-primary-foreground/10 text-primary-foreground">Phase 4 · List study</Badge>
             <CardTitle className="max-w-md text-2xl leading-tight text-primary-foreground sm:text-3xl">A softer way to return to what matters.</CardTitle>
-            <CardDescription className="max-w-lg text-base leading-relaxed text-primary-foreground/75">Categories and topics are ready for your first layer of local study organization.</CardDescription>
+            <CardDescription className="max-w-lg text-base leading-relaxed text-primary-foreground/75">Questions and answers now have a calm, local place for focused review.</CardDescription>
           </CardHeader>
           <CardContent className="relative p-6 pt-0 sm:p-8 sm:pt-0">
             <Button render={<Link to="/categories" />} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 focus-visible:ring-primary-foreground/60" size="lg">
@@ -486,10 +601,19 @@ export function CategoryDetailPage() {
 
 export function TopicStudyPage() {
   const { categoryId = '', topicId = '' } = useParams()
-  const { data, openTopic } = useStudyData()
+  const { data, createEntry, updateEntry, deleteEntry, openTopic } = useStudyData()
   const category = findCategory(data, categoryId)
   const topic = findTopic(data, topicId)
   const openedTopicId = useRef<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<EntrySort>('newest')
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<Entry | null>(null)
+  const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
+  const [showQuestions, setShowQuestions] = useState(data.settings.showQuestionsByDefault)
+  const [showAnswers, setShowAnswers] = useState(data.settings.showAnswersByDefault)
+  const [revealedAnswers, setRevealedAnswers] = useState<Set<string>>(() => new Set())
+  const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
 
   useEffect(() => {
     if (topic && topic.categoryId === categoryId && openedTopicId.current !== topic.id) {
@@ -498,30 +622,108 @@ export function TopicStudyPage() {
     }
   }, [categoryId, openTopic, topic])
 
+  useEffect(() => {
+    setShowQuestions(data.settings.showQuestionsByDefault)
+    setShowAnswers(data.settings.showAnswersByDefault)
+    setRevealedAnswers(new Set())
+  }, [data.settings.showAnswersByDefault, data.settings.showQuestionsByDefault, topic?.id])
+
   if (!category || !topic || topic.categoryId !== category.id) return <NotFoundPage />
+  const currentTopic = topic
+
+  function showCreateForm() {
+    setEditingEntry(null)
+    setFormOpen(true)
+  }
+
+  function submitEntry(values: EntryFormValues) {
+    return editingEntry ? updateEntry(editingEntry.id, values) : createEntry(currentTopic.id, values)
+  }
+
+  function toggleAnswer(entryId: string) {
+    setRevealedAnswers((current) => {
+      const next = new Set(current)
+      if (next.has(entryId)) next.delete(entryId)
+      else next.add(entryId)
+      return next
+    })
+  }
+
+  function revealAllAnswers() {
+    setRevealedAnswers(new Set(entries.map((entry) => entry.id)))
+  }
 
   return (
     <div>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <PageHeading title={topic.name} description={topic.description || 'A focused review path for questions and explanations.'} />
-        <div className="flex w-full text-base text-muted-foreground sm:w-auto sm:justify-end">
-          <CountLabel count={getEntriesForTopic(data, topic.id).length} singular="question" plural="questions" />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:items-end">
+          <div className="text-base text-muted-foreground sm:text-right">
+            <CountLabel count={getEntriesForTopic(data, topic.id).length} singular="question" plural="questions" />
+          </div>
+          <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New entry</Button>
         </div>
       </div>
-      <Card className="mt-9 bg-accent/35">
-        <CardContent className="p-6 sm:p-8">
-          <div className="flex items-start gap-4">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground"><BookOpenCheck aria-hidden="true" className="size-5" /></div>
-            <div>
-              <h2 className="font-heading text-lg font-semibold text-accent-foreground">Your topic is ready for entries.</h2>
-              <p className="mt-2 max-w-2xl text-base leading-relaxed text-muted-foreground">Entry management and List Mode arrive in Phase 4. This topic already has a stable place in your local study library.</p>
-            </div>
+
+      <div className="mt-7 flex flex-col gap-5">
+        <CollectionToolbar
+          search={search}
+          onSearchChange={setSearch}
+          sort={sort}
+          onSortChange={(value) => setSort(value as EntrySort)}
+          sortOptions={[{ value: 'newest', label: 'Newest' }, { value: 'oldest', label: 'Oldest' }, { value: 'alphabetical', label: 'Question: A–Z' }]}
+          placeholder="Search questions and answers"
+          label="Entry search"
+        />
+
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card/60 p-2" aria-label="List study controls">
+          <Button type="button" size="sm" variant={showQuestions ? 'secondary' : 'ghost'} aria-pressed={showQuestions} onClick={() => setShowQuestions((current) => !current)}>
+            {showQuestions ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+            Show Questions
+          </Button>
+          <Button type="button" size="sm" variant={showAnswers ? 'secondary' : 'ghost'} aria-pressed={showAnswers} onClick={() => setShowAnswers((current) => !current)}>
+            {showAnswers ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
+            Show Answers
+          </Button>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="ghost" disabled={entries.length === 0} onClick={revealAllAnswers}>Reveal All</Button>
+            <Button type="button" size="sm" variant="ghost" disabled={entries.length === 0} onClick={() => setRevealedAnswers(new Set())}>Hide All</Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {entries.length === 0 ? (
+          <EntryEmptyState hasSearch={Boolean(search.trim())} onCreate={showCreateForm} onClearSearch={() => setSearch('')} />
+        ) : (
+          <EntryList
+            entries={entries}
+            showQuestions={showQuestions}
+            showAnswers={showAnswers}
+            revealedAnswers={revealedAnswers}
+            onToggleAnswer={toggleAnswer}
+            onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
+            onDelete={setDeletingEntry}
+          />
+        )}
+      </div>
+
       <div className="mt-8">
         <Link to={`/categories/${category.id}`} className="inline-flex min-h-9 items-center gap-2 rounded-lg text-base font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"><ArrowLeft aria-hidden="true" data-icon="inline-start" /> Back to topics</Link>
       </div>
+
+      <EntryFormDialog
+        open={formOpen}
+        initialValues={editingEntry ? { question: editingEntry.question, answer: editingEntry.answer } : EMPTY_ENTRY_FORM_VALUES}
+        onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEntry(null) }}
+        onSubmit={submitEntry}
+      />
+      {deletingEntry && (
+        <EntryDeleteDialog
+          question={deletingEntry.question}
+          open
+          onOpenChange={(open) => { if (!open) setDeletingEntry(null) }}
+          onConfirm={() => deleteEntry(deletingEntry.id)}
+        />
+      )}
     </div>
   )
 }

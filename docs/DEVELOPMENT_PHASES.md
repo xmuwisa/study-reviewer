@@ -5,8 +5,9 @@ The Phase 1 application foundation and Phase 2 local data foundations are
 merged into `main`: the responsive React/Vite shell, Tailwind and shadcn
 styling, route placeholders, reusable UI primitives, typed records, runtime
 validation, and versioned localStorage adapter are present. Phase 3 category
-and topic CRUD is complete on the active `feat/category-topic-crud` branch and
-ready for pull request review.
+and topic CRUD is complete and merged into `main`. Phase 4 entry management
+and List Study Mode are being implemented on the active
+`feat/entry-list-study` branch.
 Vitest and Playwright configuration and test files remain intentionally
 deferred until explicitly requested; later phases remain planned and
 unimplemented.
@@ -127,6 +128,8 @@ prefix conventions when creating them.
 ### Phase 4 — Entries and List Mode
 
 **Suggested branch:** `feat/entry-list-study`
+
+**Status:** In progress on `feat/entry-list-study`.
 
 **Dependencies:** Phase 3.
 
