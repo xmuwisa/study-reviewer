@@ -1,8 +1,8 @@
 # Study Reviewer Project Plan
 
-Status: Phases 1–4 are merged into `main`; Phase 5 Flashcard Study Mode is in
-progress on `feat/flashcard-study-mode`. Later study features remain planned
-for later phases.
+Status: Phases 1–5 are merged into `main`; Phase 6 Dashboard Overview is in
+progress on `feat/dashboard-overview`. Later study features remain planned for
+later phases.
 
 ## Product vision
 

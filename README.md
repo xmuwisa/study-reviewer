@@ -21,11 +21,11 @@ The project uses Bun for package management and local development commands.
 
 ## Project status
 
-The Phase 1 application foundation through Phase 4 entry management are
-merged into `main`. Phase 5 is active on `feat/flashcard-study-mode` and adds
-type-aware, keyboard-accessible Flashcard Study Mode alongside List Study Mode.
-Testing infrastructure and test coverage remain intentionally deferred until
-explicitly requested.
+The Phase 1 application foundation through Phase 5 study modes are merged into
+`main`. Phase 6 Dashboard Overview is active on `feat/dashboard-overview` and
+adds local summary statistics, recent activity, and context-aware creation
+navigation. Testing infrastructure and test coverage remain intentionally
+deferred until explicitly requested.
 Settings and the functional Pomodoro timer remain planned for later phases.
 
 The product and implementation roadmap are documented in:
@@ -44,5 +44,6 @@ bun run dev
 The current implementation provides category, topic, and question-and-answer
 entry creation, editing, deletion, Question & Answer and Term & Definition
 types, navigation, search, sorting, List Study Mode, Flashcard Study Mode,
-column and answer visibility controls, and local persistence. Settings and
-timer functionality remain planned for later phases.
+column and answer visibility controls, dashboard statistics, recent activity,
+context-aware creation navigation, and local persistence. Settings and timer
+functionality remain planned for later phases.
