@@ -1441,44 +1441,19 @@ export function SettingsPage() {
         </Card>
 
         <Card className="bg-card/80">
-          <CardHeader className="p-6 pb-4">
-            <SectionLabel>Default Study Mode</SectionLabel>
-            <CardTitle className="mt-2 text-2xl">Set your starting view</CardTitle>
-            <CardDescription className="leading-relaxed">These preferences apply when opening a new topic study session. You can still change the current session as you study.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Default study mode</FieldLabel>
-                <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
-                  const nextMode = value[0]
-                  if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
-                }} aria-label="Default study mode" className="w-full sm:w-fit">
-                  <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
-                  <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
-                </ToggleGroup>
-              </Field>
-
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Allow copy and paste in entry fields</FieldTitle>
-                  <FieldDescription>This only affects editable question, term, answer, and definition fields. It cannot control browser or stored-data copying elsewhere.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.allowCopyPaste} onPressedChange={(pressed) => savePreferences({ allowCopyPaste: pressed })} aria-label="Allow copy and paste in entry fields" size="sm">
-                  {settings.allowCopyPaste ? 'On' : 'Off'}
-                </Toggle>
-              </Field>
-
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Use browser spellcheck</FieldTitle>
-                  <FieldDescription>Spellcheck behavior is provided by your browser and operating system; Study Reviewer does not add offline autocorrection.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
-                  {settings.spellcheck ? 'On' : 'Off'}
-                </Toggle>
-              </Field>
-            </FieldGroup>
+          <CardContent className="p-6">
+            <Field className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <FieldContent>
+                <FieldTitle>Default Study Mode</FieldTitle>
+              </FieldContent>
+              <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
+                const nextMode = value[0]
+                if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
+              }} aria-label="Default study mode" className="w-full shrink-0 sm:w-fit">
+                <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
+                <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
           </CardContent>
         </Card>
 
@@ -1507,6 +1482,37 @@ export function SettingsPage() {
                 </FieldContent>
                 <Toggle pressed={settings.showAnswersByDefault} onPressedChange={(pressed) => savePreferences({ showAnswersByDefault: pressed })} aria-label="Show answers and definitions by default" size="sm">
                   {settings.showAnswersByDefault ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>Editing Preferences</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Keep entry editing comfortable</CardTitle>
+            <CardDescription className="leading-relaxed">Choose how editable study fields interact with browser clipboard and spellcheck behavior.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Allow copy and paste in entry fields</FieldTitle>
+                  <FieldDescription>This only affects editable question, term, answer, and definition fields. It cannot control browser or stored-data copying elsewhere.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.allowCopyPaste} onPressedChange={(pressed) => savePreferences({ allowCopyPaste: pressed })} aria-label="Allow copy and paste in entry fields" size="sm">
+                  {settings.allowCopyPaste ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Use browser spellcheck</FieldTitle>
+                  <FieldDescription>Spellcheck behavior is provided by your browser and operating system; Study Reviewer does not add offline autocorrection.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
+                  {settings.spellcheck ? 'On' : 'Off'}
                 </Toggle>
               </Field>
             </FieldGroup>
