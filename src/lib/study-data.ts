@@ -1,11 +1,14 @@
-export const STUDY_DATA_SCHEMA_VERSION = 1 as const
+export const STUDY_DATA_SCHEMA_VERSION = 2 as const
 export const STUDY_DATA_STORAGE_KEY = `study-reviewer:data:v${STUDY_DATA_SCHEMA_VERSION}`
+export const LEGACY_STUDY_DATA_STORAGE_KEYS = ['study-reviewer:data:v1'] as const
 
 export type RecordId = string
 export type Timestamp = number
 
 export type ThemePreference = 'light' | 'dark' | 'system'
 export type StudyMode = 'list' | 'flashcard'
+export type EntryType = 'question-answer' | 'term-definition'
+export type FlashcardFrontSide = 'left' | 'right'
 export type PomodoroMode = 'focus' | 'short-break' | 'long-break'
 export type PomodoroSessionStatus = 'running' | 'paused' | 'completed' | 'reset'
 
@@ -31,6 +34,7 @@ export type Topic = {
 export type Entry = {
   id: RecordId
   topicId: RecordId
+  type: EntryType
   question: string
   answer: string
   createdAt: Timestamp
@@ -55,6 +59,7 @@ export type StudySettings = {
   showAnswersByDefault: boolean
   allowCopyPaste: boolean
   spellcheck: boolean
+  flashcardFrontByEntryType: Record<EntryType, FlashcardFrontSide>
   pomodoro: PomodoroPreferences
 }
 
@@ -103,6 +108,7 @@ export type CategoryInput = {
 export type TopicInput = CategoryInput
 
 export type EntryInput = {
+  type?: EntryType
   question: string
   answer: string
 }
@@ -121,9 +127,13 @@ export function createDefaultSettings(): StudySettings {
     theme: 'system',
     defaultStudyMode: 'list',
     showQuestionsByDefault: true,
-    showAnswersByDefault: false,
+    showAnswersByDefault: true,
     allowCopyPaste: true,
     spellcheck: true,
+    flashcardFrontByEntryType: {
+      'question-answer': 'left',
+      'term-definition': 'right',
+    },
     pomodoro: {
       focusMinutes: 25,
       shortBreakMinutes: 5,
@@ -197,6 +207,7 @@ export function createEntryRecord(
   return {
     id,
     topicId,
+    type: input.type ?? 'question-answer',
     question: input.question.trim(),
     answer: input.answer.trim(),
     createdAt: now,

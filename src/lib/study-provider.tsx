@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 
-import type { CategoryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
 import {
   createCategory,
+  createEntry,
   createTopic,
   deleteCategory,
+  deleteEntry,
   deleteTopic,
   markCategoryAccessed,
   markTopicAccessed,
   updateCategory,
+  updateEntry,
   updateTopic,
 } from '@/lib/study-operations'
 import { StudyContext, type StorageNotice, type StudyContextValue } from '@/lib/study-context'
@@ -60,6 +63,15 @@ export function StudyProvider({ children }: { children: ReactNode }) {
     [commit, data],
   )
   const deleteTopicAction = useCallback((topicId: RecordId) => commit(deleteTopic(data, topicId)), [commit, data])
+  const createEntryAction = useCallback(
+    (topicId: RecordId, input: EntryInput) => commit(createEntry(data, topicId, input)),
+    [commit, data],
+  )
+  const updateEntryAction = useCallback(
+    (entryId: RecordId, input: EntryInput) => commit(updateEntry(data, entryId, input)),
+    [commit, data],
+  )
+  const deleteEntryAction = useCallback((entryId: RecordId) => commit(deleteEntry(data, entryId)), [commit, data])
   const openCategory = useCallback((categoryId: RecordId) => commit(markCategoryAccessed(data, categoryId)), [commit, data])
   const openTopic = useCallback((topicId: RecordId) => commit(markTopicAccessed(data, topicId)), [commit, data])
   const clearStorageNotice = useCallback(() => setStorageNotice(null), [])
@@ -75,19 +87,25 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       createTopic: createTopicAction,
       updateTopic: updateTopicAction,
       deleteTopic: deleteTopicAction,
+      createEntry: createEntryAction,
+      updateEntry: updateEntryAction,
+      deleteEntry: deleteEntryAction,
       openCategory,
       openTopic,
     }),
     [
       clearStorageNotice,
       createCategoryAction,
+      createEntryAction,
       data,
       deleteCategoryAction,
+      deleteEntryAction,
       deleteTopicAction,
       openCategory,
       openTopic,
       storageNotice,
       updateCategoryAction,
+      updateEntryAction,
       updateTopicAction,
       createTopicAction,
     ],
