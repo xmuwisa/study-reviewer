@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { CategoryInput, EntryInput, PomodoroMode, RecordId, StudyData, TopicInput } from '@/lib/study-data'
 import type { StudySettingsPatch } from '@/lib/study-operations'
 
 export type StorageNotice = {
@@ -24,6 +24,13 @@ export type StudyContextValue = {
   openCategory: (categoryId: RecordId) => boolean
   openTopic: (topicId: RecordId) => boolean
   updateSettings: (patch: StudySettingsPatch) => boolean
+  selectPomodoroMode: (mode: PomodoroMode) => boolean
+  abandonPomodoroSession: (mode: PomodoroMode) => boolean
+  startPomodoro: () => boolean
+  pausePomodoro: () => boolean
+  resumePomodoro: () => boolean
+  resetPomodoro: () => boolean
+  adjustPomodoroDuration: (durationMinutes: number) => boolean
 }
 
 export const StudyContext = createContext<StudyContextValue | null>(null)

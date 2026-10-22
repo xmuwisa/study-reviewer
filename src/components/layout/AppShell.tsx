@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-
 
 import { getPageTitle, productMark } from '@/app/routes'
 import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
-import { PomodoroPlaceholder } from '@/components/pomodoro/PomodoroPlaceholder'
+import { PomodoroTimer } from '@/components/pomodoro/PomodoroTimer'
 import { Button } from '@/components/ui/button'
 import { findCategory, findTopic, type StudyData } from '@/lib/study-data'
 import type { StorageNotice } from '@/lib/study-context'
@@ -117,7 +117,7 @@ function FloatingAddButton({ pathname }: { pathname: string }) {
       type="button"
       size="icon-lg"
       aria-label={label}
-      className="fixed right-4 bottom-6 z-20 rounded-full bg-primary text-primary-foreground hover:bg-primary/85 sm:right-7 sm:bottom-8"
+      className="fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-20 rounded-full bg-primary text-primary-foreground hover:bg-primary/85 sm:right-7 sm:bottom-[calc(6.5rem+env(safe-area-inset-bottom))]"
       onClick={() => navigate(target)}
     >
       <Plus aria-hidden="true" />
@@ -161,9 +161,7 @@ export function AppShell() {
         </div>
         <Outlet />
         <FloatingAddButton pathname={pathname} />
-        <div className="mt-8 flex justify-end">
-          <PomodoroPlaceholder />
-        </div>
+        <PomodoroTimer />
       </main>
     </div>
   )

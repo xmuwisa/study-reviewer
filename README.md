@@ -21,12 +21,10 @@ The project uses Bun for package management and local development commands.
 
 ## Project status
 
-The Phase 1 application foundation through Phase 6 Dashboard Overview are
-merged into `main`. Phase 7 Settings and Preferences is complete on
-`feat/settings-preferences` and adds local theme, study-session, flashcard,
-spellcheck, copy/paste, and Pomodoro preferences. Testing infrastructure and
-test coverage remain intentionally deferred until explicitly requested.
-The functional Pomodoro timer remains planned for a later phase.
+The Phase 1 application foundation through Phase 7 Settings and Preferences
+are merged into `main`. Phase 8 Persistent Pomodoro Timer is implemented on
+`feat/pomodoro-timer` and ready for review. Testing infrastructure and test
+coverage remain intentionally deferred until explicitly requested.
 
 The product and implementation roadmap are documented in:
 
@@ -45,6 +43,6 @@ The current implementation provides category, topic, and question-and-answer
 entry creation, editing, deletion, Question & Answer and Term & Definition
 types, navigation, search, sorting, List Study Mode, Flashcard Study Mode,
 column and answer visibility controls, dashboard statistics, recent activity,
-context-aware creation navigation, local persistence, and Settings preferences.
-The functional Pomodoro timer, data management, and export workflows remain
+context-aware creation navigation, local persistence, Settings preferences,
+and the persistent Pomodoro timer. Data management and export workflows remain
 planned for later phases.

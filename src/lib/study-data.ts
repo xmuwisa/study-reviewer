@@ -86,6 +86,8 @@ export type PomodoroSession = {
 }
 
 export type TimerState = {
+  selectedMode: PomodoroMode
+  selectedDurationMinutes: number
   activeSession: PomodoroSession | null
   focusCycleCount: number
 }
@@ -160,6 +162,8 @@ export function createEmptyStudyData(): StudyData {
       completedFocusMinutes: 0,
     },
     timer: {
+      selectedMode: 'focus',
+      selectedDurationMinutes: 25,
       activeSession: null,
       focusCycleCount: 0,
     },

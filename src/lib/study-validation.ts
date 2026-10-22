@@ -225,10 +225,40 @@ function validateTimer(value: unknown, path: string, issues: ValidationIssue[]):
     return false
   }
 
+  if (!isPomodoroMode(value.selectedMode)) addIssue(issues, `${path}.selectedMode`, 'must be a supported Pomodoro mode')
+  if (!isNonNegativeInteger(value.selectedDurationMinutes) || value.selectedDurationMinutes < 1 || value.selectedDurationMinutes > 120) {
+    addIssue(issues, `${path}.selectedDurationMinutes`, 'must be an integer from 1 to 120')
+  }
   if (value.activeSession !== null) validatePomodoroSession(value.activeSession, `${path}.activeSession`, issues)
   if (!isNonNegativeInteger(value.focusCycleCount)) addIssue(issues, `${path}.focusCycleCount`, 'must be a non-negative integer')
 
   return true
+}
+
+function getDefaultPomodoroDuration(value: UnknownRecord, mode: PomodoroMode) {
+  const defaults = createDefaultSettings().pomodoro
+  const settings = isRecord(value.settings) && isRecord(value.settings.pomodoro) ? value.settings.pomodoro : defaults
+  if (mode === 'short-break' && typeof settings.shortBreakMinutes === 'number') return settings.shortBreakMinutes
+  if (mode === 'long-break' && typeof settings.longBreakMinutes === 'number') return settings.longBreakMinutes
+  if (mode === 'focus' && typeof settings.focusMinutes === 'number') return settings.focusMinutes
+  return defaults.focusMinutes
+}
+
+function migrateTimerState(value: UnknownRecord) {
+  const timer = isRecord(value.timer) ? value.timer : {}
+  const selectedMode = isPomodoroMode(timer.selectedMode) ? timer.selectedMode : 'focus'
+  const selectedDurationMinutes = isNonNegativeInteger(timer.selectedDurationMinutes) && timer.selectedDurationMinutes >= 1 && timer.selectedDurationMinutes <= 120
+    ? timer.selectedDurationMinutes
+    : getDefaultPomodoroDuration(value, selectedMode)
+
+  return {
+    ...value,
+    timer: {
+      ...timer,
+      selectedMode,
+      selectedDurationMinutes,
+    },
+  }
 }
 
 function validateUniqueIds(records: Array<{ id: unknown }>, path: string, issues: ValidationIssue[]) {
@@ -260,7 +290,7 @@ export function migrateStudyData(value: unknown): MigrationResult {
 
     return {
       ok: true,
-      value: { ...value, schemaVersion: STUDY_DATA_SCHEMA_VERSION, entries, settings },
+      value: migrateTimerState({ ...value, schemaVersion: STUDY_DATA_SCHEMA_VERSION, entries, settings }),
       version: STUDY_DATA_SCHEMA_VERSION,
     }
   }
@@ -269,7 +299,7 @@ export function migrateStudyData(value: unknown): MigrationResult {
     return { ok: false, reason: 'unsupported', message: `Stored schema version ${value.schemaVersion} is not supported.` }
   }
 
-  return { ok: true, value, version: STUDY_DATA_SCHEMA_VERSION }
+  return { ok: true, value: migrateTimerState(value), version: STUDY_DATA_SCHEMA_VERSION }
 }
 
 export function validateStudyData(value: unknown): ValidationResult {

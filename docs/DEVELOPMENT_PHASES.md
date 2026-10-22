@@ -9,10 +9,10 @@ and topic CRUD is complete and merged into `main`. Phase 4 entry management
 and List Study Mode are complete and merged into `main`. Phase 5 Flashcard
 Study Mode is complete and merged into `main`. Phase 6 Dashboard Overview is
 complete and merged into `main`. Phase 7 Settings and Preferences is complete
-on the active `feat/settings-preferences` branch and ready for review.
-Vitest and Playwright configuration and test files remain intentionally
-deferred until explicitly requested; later phases remain planned and
-unimplemented.
+and merged into `main`. Phase 8 Persistent Pomodoro Timer is implemented on
+the active `feat/pomodoro-timer` branch and ready for review. Vitest and
+Playwright configuration and test files remain intentionally deferred until
+explicitly requested; later phases remain planned and unimplemented.
 Each phase is intentionally small enough for a focused branch and pull
 request. Keep the branch names illustrative; use the repository's normal
 prefix conventions when creating them.
@@ -258,6 +258,8 @@ prefix conventions when creating them.
 ### Phase 8 — Persistent Pomodoro timer
 
 **Suggested branch:** `feat/pomodoro-timer`
+
+**Status:** Implemented on `feat/pomodoro-timer`; pending pull request review.
 
 **Dependencies:** Phases 2, 6, and 7.
 
