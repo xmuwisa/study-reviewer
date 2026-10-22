@@ -33,7 +33,7 @@ import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
 import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
@@ -60,6 +60,11 @@ const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { type: 'question-answer', ques
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-base font-medium text-muted-foreground">{children}</p>
 }
+
+function getFlashcardDefaultDescription(frontSide: FlashcardFrontSide, leftLabel: string, rightLabel: string) {
+  return `Default: ${frontSide === 'left' ? leftLabel : rightLabel} first.`
+}
+
 function PageHeading({ title, description }: { title: string; description: string }) {
   return (
     <div className="max-w-2xl">
@@ -1372,12 +1377,27 @@ export function TopicStudyPage() {
 
 export function SettingsPage() {
   const { data, updateSettings } = useStudyData()
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveToast, setSaveToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
+  const [isToastExiting, setIsToastExiting] = useState(false)
   const settings = data.settings
+
+  useEffect(() => {
+    if (!saveToast) return
+
+    setIsToastExiting(false)
+    const exitTimeoutId = window.setTimeout(() => setIsToastExiting(true), 2200)
+    const removeTimeoutId = window.setTimeout(() => setSaveToast(null), 2400)
+    return () => {
+      window.clearTimeout(exitTimeoutId)
+      window.clearTimeout(removeTimeoutId)
+    }
+  }, [saveToast])
 
   function savePreferences(patch: Parameters<typeof updateSettings>[0], message = 'Preference saved locally.') {
     const saved = updateSettings(patch)
-    setSaveMessage(saved ? message : 'This preference could not be saved. Check local storage availability and try again.')
+    setSaveToast(saved
+      ? { kind: 'success', message }
+      : { kind: 'error', message: 'This preference could not be saved. Check local storage availability and try again.' })
   }
 
   function restoreDefaults() {
@@ -1404,7 +1424,20 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      {saveMessage && <p className="mt-5 text-base text-muted-foreground" role="status" aria-live="polite">{saveMessage}</p>}
+      {saveToast && (
+        <div className="pointer-events-none fixed inset-x-4 bottom-8 z-50 flex justify-start sm:inset-x-auto sm:left-6" aria-live="polite">
+          <p
+            className={cn(
+              'flex max-w-full items-center gap-2 rounded-xl border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-xl',
+              isToastExiting ? 'animate-out fade-out slide-out-to-bottom-2 duration-200' : 'animate-in fade-in slide-in-from-bottom-2 duration-200',
+            )}
+            role={saveToast.kind === 'error' ? 'alert' : 'status'}
+          >
+            {saveToast.kind === 'success' && <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-accent-foreground" />}
+            <span>{saveToast.message}</span>
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex flex-col gap-5">
         <Card className="bg-card/80">
@@ -1447,14 +1480,14 @@ export function SettingsPage() {
             <CardDescription className="leading-relaxed">Choose how new topic study sessions begin.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 pt-0">
-            <Field className="flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+            <Field className="flex-col items-start gap-3">
               <FieldContent>
                 <FieldTitle>Study mode</FieldTitle>
               </FieldContent>
               <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
                 const nextMode = value[0]
                 if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
-              }} aria-label="Default study mode" className="w-full shrink-0 sm:w-fit">
+              }} aria-label="Default study mode" className="w-full sm:w-fit">
                 <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
                 <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
               </ToggleGroup>
@@ -1514,18 +1547,21 @@ export function SettingsPage() {
         </Card>
 
         <Card className="bg-card/80">
-          <CardHeader className="p-6 pb-4">
-            <div>
+          <CardHeader className="flex flex-col gap-4 p-6 pb-4 sm:grid sm:gap-1">
+            <div className="min-w-0">
               <SectionLabel>Flashcards</SectionLabel>
               <CardTitle className="mt-2 text-2xl">Choose the first side</CardTitle>
-              <CardDescription className="mt-2 leading-relaxed">Each entry type has an independent front-side preference. The opposite side remains available after flipping.</CardDescription>
+              <CardDescription className="mt-2 leading-relaxed">Each entry type has a front-side preference. The opposite side remains available after flipping.</CardDescription>
             </div>
+            <CardAction className="self-start justify-self-auto sm:self-center sm:justify-self-end sm:translate-y-1">
+              <Button type="button" variant="secondary" size="sm" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
+            </CardAction>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <FieldGroup>
               <Field>
                 <FieldLabel>Question &amp; Answer</FieldLabel>
-                <FieldDescription>Default: Question first.</FieldDescription>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['question-answer'], 'Question', 'Answer')}</FieldDescription>
                 <ToggleGroup value={[settings.flashcardFrontByEntryType['question-answer']]} onValueChange={(value) => {
                   const nextSide = value[0]
                   if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'question-answer': nextSide } })
@@ -1536,7 +1572,7 @@ export function SettingsPage() {
               </Field>
               <Field>
                 <FieldLabel>Term &amp; Definition</FieldLabel>
-                <FieldDescription>Default: Definition first.</FieldDescription>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['term-definition'], 'Term', 'Definition')}</FieldDescription>
                 <ToggleGroup value={[settings.flashcardFrontByEntryType['term-definition']]} onValueChange={(value) => {
                   const nextSide = value[0]
                   if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'term-definition': nextSide } })
@@ -1546,7 +1582,6 @@ export function SettingsPage() {
                 </ToggleGroup>
               </Field>
             </FieldGroup>
-            <Button type="button" variant="secondary" size="sm" className="mt-5" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
           </CardContent>
         </Card>
 
