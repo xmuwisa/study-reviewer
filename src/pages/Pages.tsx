@@ -12,12 +12,15 @@ import {
   FolderPlus,
   FolderOpen,
   Layers3,
+  Monitor,
+  Moon,
   Pencil,
   Plus,
   RotateCcw,
   Search,
   Sparkles,
   Shuffle,
+  Sun,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -30,13 +33,16 @@ import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
 import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type FlashcardFrontSide, type StudyMode, type Topic } from '@/lib/study-data'
+import { createDefaultSettings, findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type FlashcardFrontSide, type StudyMode, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
 import { cn } from '@/lib/utils'
 import {
@@ -54,6 +60,11 @@ const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { type: 'question-answer', ques
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-base font-medium text-muted-foreground">{children}</p>
 }
+
+function getFlashcardDefaultDescription(frontSide: FlashcardFrontSide, leftLabel: string, rightLabel: string) {
+  return `Default: ${frontSide === 'left' ? leftLabel : rightLabel} first.`
+}
+
 function PageHeading({ title, description }: { title: string; description: string }) {
   return (
     <div className="max-w-2xl">
@@ -1192,14 +1203,16 @@ export function TopicStudyPage() {
   const [deletingEntry, setDeletingEntry] = useState<Entry | null>(null)
   const [studyMode, setStudyMode] = useState<StudyMode>(() => data.settings.defaultStudyMode)
   const topicEntryIds = useMemo(() => getEntriesForTopic(data, topicId).map((entry) => entry.id), [data, topicId])
-  const [hiddenLeft, setHiddenLeft] = useState<Set<string>>(() => new Set())
-  const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => new Set(topicEntryIds))
+  const [hiddenLeft, setHiddenLeft] = useState<Set<string>>(() => data.settings.showQuestionsByDefault ? new Set() : new Set(topicEntryIds))
+  const [hiddenRight, setHiddenRight] = useState<Set<string>>(() => data.settings.showAnswersByDefault ? new Set() : new Set(topicEntryIds))
   const [visibilityTopicId, setVisibilityTopicId] = useState(topicId)
   const topicEntryIdsRef = useRef(topicEntryIds)
+  const studySettingsRef = useRef(data.settings)
   const previousEntryIdsRef = useRef(new Set(topicEntryIds))
   const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
 
   topicEntryIdsRef.current = topicEntryIds
+  studySettingsRef.current = data.settings
 
   useEffect(() => {
     if (topic && topic.categoryId === categoryId && openedTopicId.current !== topic.id) {
@@ -1210,8 +1223,9 @@ export function TopicStudyPage() {
 
   useEffect(() => {
     setVisibilityTopicId(topicId)
-    setHiddenLeft(new Set())
-    setHiddenRight(new Set(topicEntryIdsRef.current))
+    setStudyMode(studySettingsRef.current.defaultStudyMode)
+    setHiddenLeft(studySettingsRef.current.showQuestionsByDefault ? new Set() : new Set(topicEntryIdsRef.current))
+    setHiddenRight(studySettingsRef.current.showAnswersByDefault ? new Set() : new Set(topicEntryIdsRef.current))
   }, [topicId])
 
   useEffect(() => {
@@ -1344,6 +1358,8 @@ export function TopicStudyPage() {
       <EntryFormDialog
         open={formOpen}
         initialValues={editingEntry ? { type: editingEntry.type, question: editingEntry.question, answer: editingEntry.answer } : EMPTY_ENTRY_FORM_VALUES}
+        allowCopyPaste={data.settings.allowCopyPaste}
+        spellcheck={data.settings.spellcheck}
         onOpenChange={(open) => { setFormOpen(open); if (!open) setEditingEntry(null) }}
         onSubmit={submitEntry}
       />
@@ -1360,23 +1376,279 @@ export function TopicStudyPage() {
 }
 
 export function SettingsPage() {
+  const { data, updateSettings } = useStudyData()
+  const [saveToast, setSaveToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
+  const [isToastExiting, setIsToastExiting] = useState(false)
+  const settings = data.settings
+
+  useEffect(() => {
+    if (!saveToast) return
+
+    setIsToastExiting(false)
+    const exitTimeoutId = window.setTimeout(() => setIsToastExiting(true), 2200)
+    const removeTimeoutId = window.setTimeout(() => setSaveToast(null), 2400)
+    return () => {
+      window.clearTimeout(exitTimeoutId)
+      window.clearTimeout(removeTimeoutId)
+    }
+  }, [saveToast])
+
+  function savePreferences(patch: Parameters<typeof updateSettings>[0], message = 'Preference saved locally.') {
+    const saved = updateSettings(patch)
+    setSaveToast(saved
+      ? { kind: 'success', message }
+      : { kind: 'error', message: 'This preference could not be saved. Check local storage availability and try again.' })
+  }
+
+  function restoreDefaults() {
+    savePreferences(createDefaultSettings(), 'Default preferences restored.')
+  }
+
+  function restoreFlashcardDefaults() {
+    savePreferences({ flashcardFrontByEntryType: createDefaultSettings().flashcardFrontByEntryType }, 'Flashcard defaults restored.')
+  }
+
+  function updatePomodoroNumber(field: 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes' | 'sessionsBeforeLongBreak', value: string) {
+    const nextValue = Number(value)
+    const maximum = field === 'sessionsBeforeLongBreak' ? 12 : 120
+    if (!Number.isInteger(nextValue) || nextValue < 1 || nextValue > maximum) return
+    savePreferences({ pomodoro: { [field]: nextValue } })
+  }
+
   return (
     <div>
-      <PageHeading title="Settings" description="A small home for preferences that keep your review environment comfortable and local." />
-      <div className="mt-9 grid gap-5 md:grid-cols-2">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeading title="Settings" description="Choose how Study Reviewer looks and how new study sessions begin. Preferences stay on this device." />
+        <Button type="button" variant="secondary" className="w-full sm:w-auto" onClick={restoreDefaults}>
+          <RotateCcw aria-hidden="true" data-icon="inline-start" /> Restore defaults
+        </Button>
+      </div>
+
+      {saveToast && (
+        <div className="pointer-events-none fixed inset-x-4 bottom-8 z-50 flex justify-start sm:inset-x-auto sm:left-6" aria-live="polite">
+          <p
+            className={cn(
+              'flex max-w-full items-center gap-2 rounded-xl border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-xl',
+              isToastExiting ? 'animate-out fade-out slide-out-to-bottom-2 duration-200' : 'animate-in fade-in slide-in-from-bottom-2 duration-200',
+            )}
+            role={saveToast.kind === 'error' ? 'alert' : 'status'}
+          >
+            {saveToast.kind === 'success' && <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-accent-foreground" />}
+            <span>{saveToast.message}</span>
+          </p>
+        </div>
+      )}
+
+      <div className="mt-8 flex flex-col gap-5">
         <Card className="bg-card/80">
-          <CardHeader className="p-6">
-            <SectionLabel>Coming later</SectionLabel>
-            <CardTitle className="mt-2 text-xl">Appearance and study preferences</CardTitle>
-            <CardDescription className="leading-relaxed">Themes, default study behavior, and accessibility preferences will arrive in a later update.</CardDescription>
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>Appearance</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Choose a comfortable theme</CardTitle>
+            <CardDescription className="leading-relaxed">System follows your browser or operating-system preference. Changing themes does not affect your study data.</CardDescription>
           </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="theme-preference">Theme</FieldLabel>
+                <Select value={settings.theme} onValueChange={(value) => {
+                  if (value === 'light' || value === 'dark' || value === 'system') savePreferences({ theme: value })
+                }}>
+                  <SelectTrigger id="theme-preference" className="w-full border-0 bg-muted/45 sm:max-w-sm">
+                    <SelectValue>
+                      {settings.theme === 'light' && <><Sun aria-hidden="true" /> Light</>}
+                      {settings.theme === 'dark' && <><Moon aria-hidden="true" /> Dark</>}
+                      {settings.theme === 'system' && <><Monitor aria-hidden="true" /> System</>}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="light"><Sun aria-hidden="true" /> Light</SelectItem>
+                      <SelectItem value="dark"><Moon aria-hidden="true" /> Dark</SelectItem>
+                      <SelectItem value="system"><Monitor aria-hidden="true" /> System</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+          </CardContent>
         </Card>
+
         <Card className="bg-card/80">
-          <CardHeader className="p-6">
-            <SectionLabel>Local-first</SectionLabel>
-            <CardTitle className="mt-2 text-xl">Your browser, your notes</CardTitle>
-            <CardDescription className="leading-relaxed">Study Reviewer keeps personal study data on this device. JSON backup and restore will be added before a substantial library is encouraged.</CardDescription>
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>Study sessions</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Default Study Mode</CardTitle>
+            <CardDescription className="leading-relaxed">Choose how new topic study sessions begin.</CardDescription>
           </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <Field className="flex-col items-start gap-3">
+              <FieldContent>
+                <FieldTitle>Study mode</FieldTitle>
+              </FieldContent>
+              <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
+                const nextMode = value[0]
+                if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
+              }} aria-label="Default study mode" className="w-full sm:w-fit">
+                <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
+                <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>List Mode</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Set your list visibility</CardTitle>
+            <CardDescription className="leading-relaxed">Choose which sides are visible when a new list study session opens.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Show questions and terms by default</FieldTitle>
+                  <FieldDescription>New list sessions open with the left column visible.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.showQuestionsByDefault} onPressedChange={(pressed) => savePreferences({ showQuestionsByDefault: pressed })} aria-label="Show questions and terms by default" size="sm">
+                  {settings.showQuestionsByDefault ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Show answers and definitions by default</FieldTitle>
+                  <FieldDescription>New list sessions open with the right column visible.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.showAnswersByDefault} onPressedChange={(pressed) => savePreferences({ showAnswersByDefault: pressed })} aria-label="Show answers and definitions by default" size="sm">
+                  {settings.showAnswersByDefault ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Allow copy and paste in entry fields</FieldTitle>
+                  <FieldDescription>This only affects editable question, term, answer, and definition fields. It cannot control browser or stored-data copying elsewhere.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.allowCopyPaste} onPressedChange={(pressed) => savePreferences({ allowCopyPaste: pressed })} aria-label="Allow copy and paste in entry fields" size="sm">
+                  {settings.allowCopyPaste ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Use browser spellcheck</FieldTitle>
+                  <FieldDescription>Spellcheck behavior is provided by your browser and operating system; Study Reviewer does not add offline autocorrection.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
+                  {settings.spellcheck ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="flex flex-col gap-4 p-6 pb-4 sm:grid sm:gap-1">
+            <div className="min-w-0">
+              <SectionLabel>Flashcards</SectionLabel>
+              <CardTitle className="mt-2 text-2xl">Choose the first side</CardTitle>
+              <CardDescription className="mt-2 leading-relaxed">Each entry type has a front-side preference. The opposite side remains available after flipping.</CardDescription>
+            </div>
+            <CardAction className="self-start justify-self-auto sm:self-center sm:justify-self-end sm:translate-y-1">
+              <Button type="button" variant="secondary" size="sm" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Question &amp; Answer</FieldLabel>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['question-answer'], 'Question', 'Answer')}</FieldDescription>
+                <ToggleGroup value={[settings.flashcardFrontByEntryType['question-answer']]} onValueChange={(value) => {
+                  const nextSide = value[0]
+                  if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'question-answer': nextSide } })
+                }} aria-label="Question and Answer front side" className="w-full sm:w-fit">
+                  <ToggleGroupItem value="left" className="flex-1 sm:flex-none">Question</ToggleGroupItem>
+                  <ToggleGroupItem value="right" className="flex-1 sm:flex-none">Answer</ToggleGroupItem>
+                </ToggleGroup>
+              </Field>
+              <Field>
+                <FieldLabel>Term &amp; Definition</FieldLabel>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['term-definition'], 'Term', 'Definition')}</FieldDescription>
+                <ToggleGroup value={[settings.flashcardFrontByEntryType['term-definition']]} onValueChange={(value) => {
+                  const nextSide = value[0]
+                  if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'term-definition': nextSide } })
+                }} aria-label="Term and Definition front side" className="w-full sm:w-fit">
+                  <ToggleGroupItem value="right" className="flex-1 sm:flex-none">Definition</ToggleGroupItem>
+                  <ToggleGroupItem value="left" className="flex-1 sm:flex-none">Term</ToggleGroupItem>
+                </ToggleGroup>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>Pomodoro</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Plan your focus rhythm</CardTitle>
+            <CardDescription className="leading-relaxed">These local preferences are ready for the Pomodoro study flow. Durations are measured in minutes.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <Field>
+                  <FieldLabel htmlFor="focus-minutes">Focus minutes</FieldLabel>
+                  <Input id="focus-minutes" type="number" min={1} max={120} value={settings.pomodoro.focusMinutes} onChange={(event) => updatePomodoroNumber('focusMinutes', event.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="short-break-minutes">Short break</FieldLabel>
+                  <Input id="short-break-minutes" type="number" min={1} max={120} value={settings.pomodoro.shortBreakMinutes} onChange={(event) => updatePomodoroNumber('shortBreakMinutes', event.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="long-break-minutes">Long break</FieldLabel>
+                  <Input id="long-break-minutes" type="number" min={1} max={120} value={settings.pomodoro.longBreakMinutes} onChange={(event) => updatePomodoroNumber('longBreakMinutes', event.target.value)} />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="sessions-before-long-break">Sessions before long break</FieldLabel>
+                  <Input id="sessions-before-long-break" type="number" min={1} max={12} value={settings.pomodoro.sessionsBeforeLongBreak} onChange={(event) => updatePomodoroNumber('sessionsBeforeLongBreak', event.target.value)} />
+                </Field>
+              </div>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Automatically switch between sessions</FieldTitle>
+                  <FieldDescription>Keep this off if you prefer to start each interval yourself.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.pomodoro.autoSwitch} onPressedChange={(pressed) => savePreferences({ pomodoro: { autoSwitch: pressed } })} aria-label="Automatically switch between sessions" size="sm">{settings.pomodoro.autoSwitch ? 'On' : 'Off'}</Toggle>
+              </Field>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Start the next interval automatically</FieldTitle>
+                  <FieldDescription>Disabled by default so each transition stays intentional.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.pomodoro.autoStart} onPressedChange={(pressed) => savePreferences({ pomodoro: { autoStart: pressed } })} aria-label="Start the next interval automatically" size="sm">{settings.pomodoro.autoStart ? 'On' : 'Off'}</Toggle>
+              </Field>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Sound alerts</FieldTitle>
+                  <FieldDescription>Sound remains off until you choose to enable it.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.pomodoro.soundEnabled} onPressedChange={(pressed) => savePreferences({ pomodoro: { soundEnabled: pressed } })} aria-label="Sound alerts" size="sm">{settings.pomodoro.soundEnabled ? 'On' : 'Off'}</Toggle>
+              </Field>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Browser notifications</FieldTitle>
+                  <FieldDescription>Notifications remain off until you choose to enable them.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.pomodoro.notificationsEnabled} onPressedChange={(pressed) => savePreferences({ pomodoro: { notificationsEnabled: pressed } })} aria-label="Browser notifications" size="sm">{settings.pomodoro.notificationsEnabled ? 'On' : 'Off'}</Toggle>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-secondary/35">
+          <CardContent className="p-6">
+            <SectionLabel>Local-first</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Your study data stays in this browser</CardTitle>
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground">Study Reviewer stores your study library and preferences locally. No account, backend, or cloud service is required for these settings.</p>
+          </CardContent>
         </Card>
       </div>
     </div>

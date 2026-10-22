@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 
 import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { StudySettingsPatch } from '@/lib/study-operations'
 
 export type StorageNotice = {
   kind: 'warning' | 'error'
@@ -22,6 +23,7 @@ export type StudyContextValue = {
   deleteEntry: (entryId: RecordId) => boolean
   openCategory: (categoryId: RecordId) => boolean
   openTopic: (topicId: RecordId) => boolean
+  updateSettings: (patch: StudySettingsPatch) => boolean
 }
 
 export const StudyContext = createContext<StudyContextValue | null>(null)
