@@ -1,360 +1,404 @@
-import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
-import { Bell, Check, ChevronDown, Clock3, Pause, Play, RotateCcw, Volume2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { Pause, Play, RotateCcw, X } from 'lucide-react'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { cn } from '@/lib/utils'
-import {
-  getPomodoroModeLabel,
-  getPomodoroRemainingSeconds,
-  POMODORO_MINUTES_MAX,
-  POMODORO_MINUTES_MIN,
-} from '@/lib/pomodoro'
 import type { PomodoroMode } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
+import { cn } from '@/lib/utils'
 
-function formatTime(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0')
-  return `${minutes}:${seconds}`
+const MIN_DURATION_MINUTES = 1
+const MAX_DURATION_MINUTES = 120
+const MAX_INDICATOR_ANGLE = 720
+const TICK_MARKS = Array.from({ length: 60 }, (_, index) => index)
+const LAUNCHER_TICK_MARKS = Array.from({ length: 16 }, (_, index) => index)
+const CALYX_CLIP_PATH = 'polygon(50% 0%, 100% 100%, 50% 78%, 0% 100%)'
+type PomodoroDurationKey = 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes'
+
+const TIMER_MODES: Record<PomodoroMode, { durationKey: PomodoroDurationKey; label: string; modeLabel: string }> = {
+  focus: { durationKey: 'focusMinutes', label: 'Focus timer', modeLabel: 'Focus' },
+  'short-break': { durationKey: 'shortBreakMinutes', label: 'Short break timer', modeLabel: 'Short Break' },
+  'long-break': { durationKey: 'longBreakMinutes', label: 'Long break timer', modeLabel: 'Long Break' },
 }
 
-function getNotificationPermission(): NotificationPermission | 'unsupported' {
-  return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+function clampDuration(value: number) {
+  return Math.min(MAX_DURATION_MINUTES, Math.max(MIN_DURATION_MINUTES, Math.round(value)))
 }
 
-function playCompletionSound() {
-  if (typeof window === 'undefined' || !window.AudioContext) return
-
-  const context = new window.AudioContext()
-  const oscillator = context.createOscillator()
-  const gain = context.createGain()
-  oscillator.type = 'sine'
-  oscillator.frequency.setValueAtTime(660, context.currentTime)
-  oscillator.frequency.linearRampToValueAtTime(880, context.currentTime + 0.18)
-  gain.gain.setValueAtTime(0.0001, context.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.02)
-  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.45)
-  oscillator.connect(gain)
-  gain.connect(context.destination)
-  void context.resume().catch(() => undefined)
-  oscillator.start()
-  oscillator.stop(context.currentTime + 0.45)
-  oscillator.addEventListener('ended', () => void context.close(), { once: true })
+function formatTimer(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-function TomatoDial({
-  minutes,
-  remainingSeconds,
-  progress,
-  disabled,
-  onPointerStart,
-  onPointerMove,
-  onPointerEnd,
-  onKeyDown,
-}: {
-  minutes: number
-  remainingSeconds: number
-  progress: number
-  disabled: boolean
-  onPointerStart: (event: PointerEvent<HTMLDivElement>) => void
-  onPointerMove: (event: PointerEvent<HTMLDivElement>) => void
-  onPointerEnd: (event: PointerEvent<HTMLDivElement>) => void
-  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void
-}) {
-  const displayMinutes = Math.max(0, Math.ceil(remainingSeconds / 60))
+function getIndicatorAngle(minutes: number) {
+  return Math.min(MAX_INDICATOR_ANGLE, Math.max(0, (minutes / MAX_DURATION_MINUTES) * MAX_INDICATOR_ANGLE))
+}
+
+function getCountdownAngle(remainingSeconds: number, durationMinutes: number) {
+  const totalSeconds = Math.max(1, durationMinutes * 60)
+  const remainingRatio = Math.min(1, Math.max(0, remainingSeconds / totalSeconds))
+  return remainingRatio * getIndicatorAngle(durationMinutes)
+}
+
+function getPointerAngle(event: PointerEvent<HTMLDivElement>) {
+  const bounds = event.currentTarget.getBoundingClientRect()
+  const x = event.clientX - (bounds.left + bounds.width / 2)
+  const y = event.clientY - (bounds.top + bounds.height / 2)
+  return Math.atan2(x, -y)
+}
+
+function TomatoCalyx({ className }: { className?: string }) {
+  return (
+    <div aria-hidden="true" className={cn('absolute top-[11%] left-1/2 h-[15%] w-[27%] -translate-x-1/2', className)}>
+      <span
+        className="absolute top-0 left-1/2 h-[84%] w-[24%] -translate-x-1/2 bg-[var(--pomodoro-leaf)]"
+        style={{ clipPath: CALYX_CLIP_PATH }}
+      />
+      <span
+        className="absolute top-[8%] left-[20%] h-[70%] w-[30%] -rotate-[38deg] bg-[var(--pomodoro-leaf)]"
+        style={{ clipPath: CALYX_CLIP_PATH }}
+      />
+      <span
+        className="absolute top-[8%] right-[20%] h-[70%] w-[30%] rotate-[38deg] bg-[var(--pomodoro-leaf)]"
+        style={{ clipPath: CALYX_CLIP_PATH }}
+      />
+      <span
+        className="absolute top-[32%] left-[15%] h-[64%] w-[29%] -rotate-[76deg] bg-[var(--pomodoro-leaf)]"
+        style={{ clipPath: CALYX_CLIP_PATH }}
+      />
+      <span
+        className="absolute top-[32%] right-[15%] h-[64%] w-[29%] rotate-[76deg] bg-[var(--pomodoro-leaf)]"
+        style={{ clipPath: CALYX_CLIP_PATH }}
+      />
+      <span className="absolute top-[30%] left-1/2 h-[58%] w-[12%] -translate-x-1/2 rotate-[16deg] rounded-full bg-[var(--pomodoro-leaf-deep)]" />
+    </div>
+  )
+}
+
+function TomatoDial({ duration, indicatorAngle, label, timerSeconds, onDurationChange }: { duration: number; indicatorAngle: number; label: string; timerSeconds: number; onDurationChange: (duration: number) => void }) {
+  const pointerId = useRef<number | null>(null)
+  const lastPointerAngle = useRef<number | null>(null)
+  const dragDuration = useRef(duration)
+
+  function updateFromPointer(event: PointerEvent<HTMLDivElement>) {
+    const currentAngle = getPointerAngle(event)
+    const previousAngle = lastPointerAngle.current
+    if (previousAngle === null) {
+      lastPointerAngle.current = currentAngle
+      return
+    }
+
+    let angleDelta = currentAngle - previousAngle
+    if (angleDelta > Math.PI) angleDelta -= Math.PI * 2
+    if (angleDelta < -Math.PI) angleDelta += Math.PI * 2
+
+    dragDuration.current = Math.min(
+      MAX_DURATION_MINUTES,
+      Math.max(MIN_DURATION_MINUTES, dragDuration.current + (angleDelta / (Math.PI * 2)) * (MAX_DURATION_MINUTES / 2)),
+    )
+    lastPointerAngle.current = currentAngle
+    onDurationChange(clampDuration(dragDuration.current))
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+    pointerId.current = event.pointerId
+    lastPointerAngle.current = getPointerAngle(event)
+    dragDuration.current = duration
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (pointerId.current !== event.pointerId) return
+    updateFromPointer(event)
+  }
+
+  function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
+    if (pointerId.current !== event.pointerId) return
+    pointerId.current = null
+    lastPointerAngle.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const step = event.shiftKey ? 5 : 1
+    let nextDuration = duration
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') nextDuration += step
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') nextDuration -= step
+    if (event.key === 'PageUp') nextDuration += 5
+    if (event.key === 'PageDown') nextDuration -= 5
+    if (event.key === 'Home') nextDuration = MIN_DURATION_MINUTES
+    if (event.key === 'End') nextDuration = MAX_DURATION_MINUTES
+
+    const clampedDuration = clampDuration(nextDuration)
+    if (clampedDuration === duration) return
+
+    event.preventDefault()
+    onDurationChange(clampedDuration)
+  }
 
   return (
     <div
-      aria-label={`Duration ${minutes} minutes`}
-      aria-valuemax={POMODORO_MINUTES_MAX}
-      aria-valuemin={POMODORO_MINUTES_MIN}
-      aria-valuenow={minutes}
-      aria-valuetext={`${minutes} minutes`}
-      className={cn(
-        'relative mx-auto aspect-square w-full max-w-[21rem] touch-none rounded-full bg-secondary p-3 shadow-[0_18px_45px_-25px_var(--destructive)] outline-none transition-transform focus-visible:ring-3 focus-visible:ring-ring/50',
-        disabled ? 'cursor-default' : 'cursor-crosshair active:scale-[0.99]',
-      )}
-      onKeyDown={onKeyDown}
-      onPointerDown={onPointerStart}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerEnd}
-      onPointerCancel={onPointerEnd}
+      aria-label="Session duration"
+      aria-valuemax={MAX_DURATION_MINUTES}
+      aria-valuemin={MIN_DURATION_MINUTES}
+      aria-valuenow={duration}
+      aria-valuetext={`${duration} minutes`}
+      className="relative mx-auto aspect-square w-full max-w-[20rem] touch-none select-none rounded-full outline-none transition-transform active:scale-[0.995] focus-visible:ring-4 focus-visible:ring-[var(--pomodoro-control)]/40"
+      onKeyDown={handleKeyDown}
+      onPointerCancel={handlePointerEnd}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
       role="slider"
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={0}
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 rounded-full opacity-90"
-        style={{ background: 'repeating-conic-gradient(from 0deg, var(--destructive) 0deg 1.5deg, transparent 1.5deg 6deg)' }}
-      />
-      <div className="absolute inset-[0.8rem] rounded-full border-4 border-destructive/70 bg-destructive shadow-inner sm:inset-4">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 rounded-full opacity-25"
-          style={{ background: `conic-gradient(from 0deg, transparent ${progress * 360}deg, var(--card) ${progress * 360}deg)` }}
-        />
-        <div aria-hidden="true" className="absolute top-[10%] left-1/2 h-7 w-12 -translate-x-1/2">
-          <span className="absolute top-1 left-1/2 h-5 w-7 -translate-x-full -rotate-12 rounded-[100%_0_100%_0] bg-accent-foreground" />
-          <span className="absolute top-1 left-1/2 h-5 w-7 translate-x-0 rotate-12 rounded-[0_100%_0_100%] bg-accent-foreground/90" />
-          <span className="absolute top-3 left-1/2 h-6 w-2 -translate-x-1/2 rotate-45 rounded-full bg-accent-foreground" />
+      <div className="absolute inset-0 rounded-full bg-[var(--pomodoro-ring)] shadow-[0_22px_40px_-28px_rgb(0_0_0_/_0.9)]">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
+          {TICK_MARKS.map((tick) => (
+            <span className="absolute inset-0 flex justify-center" key={tick} style={{ transform: `rotate(${tick * 6}deg)` }}>
+              <span
+                className={cn(
+                  'mt-[3.5%] block rounded-full bg-[var(--pomodoro-tick)]',
+                  tick % 5 === 0 ? 'h-[4.5%] w-[0.7%]' : 'h-[2.3%] w-[0.35%]',
+                )}
+              />
+            </span>
+          ))}
         </div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
-          <span className="font-heading text-5xl font-semibold tracking-tight sm:text-6xl">{displayMinutes}</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.28em] text-white/85">minutes</span>
-          <span className="mt-3 font-mono text-lg font-medium tabular-nums text-white/90">{formatTime(remainingSeconds)}</span>
-          <span className="mt-2 text-sm text-white/80">{disabled ? 'Pause or reset to adjust' : 'Rotate to adjust'}</span>
+
+        <div className="absolute inset-[5.5%] overflow-hidden rounded-full">
+          <div className="pomodoro-tomato-face absolute inset-0 rounded-full">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 transition-transform duration-200 ease-out"
+              style={{ transform: `rotate(${indicatorAngle}deg)` }}
+            >
+              <div className="absolute top-[5%] left-1/2 h-[45%] w-[1.3%] -translate-x-1/2 rounded-full bg-white/90" />
+            </div>
+            <TomatoCalyx />
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center text-white">
+              <span aria-live="polite" className="font-sans text-[clamp(3rem,8.4vw,5rem)] font-medium leading-none tracking-[-0.065em] tabular-nums lg:text-[clamp(2.4rem,7.2vw,4.6rem)]">
+                {formatTimer(timerSeconds)}
+              </span>
+              <span className="mt-3 text-[clamp(0.68rem,1.7vw,0.95rem)] font-medium uppercase tracking-[0.14em] text-white/85">
+                {label}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-export function PomodoroTimer() {
-  const { data, selectPomodoroMode, abandonPomodoroSession, startPomodoro, pausePomodoro, resumePomodoro, resetPomodoro, adjustPomodoroDuration } = useStudyData()
-  const [isOpen, setIsOpen] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
-  const [draftDuration, setDraftDuration] = useState(data.timer.selectedDurationMinutes)
-  const [pendingMode, setPendingMode] = useState<PomodoroMode | null>(null)
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(getNotificationPermission)
-  const previousCompletedSessions = useRef(data.activity.completedFocusSessions)
-  const dialPointerId = useRef<number | null>(null)
-  const session = data.timer.activeSession
-  const isRunning = session?.status === 'running'
-  const isPaused = session?.status === 'paused'
-  const isActive = Boolean(isRunning || isPaused)
-  const remainingSeconds = session ? getPomodoroRemainingSeconds(session, now) : draftDuration * 60
-  const selectedMinutes = session?.durationMinutes ?? draftDuration
-  const progress = session ? Math.min(1, remainingSeconds / Math.max(1, session.durationMinutes * 60)) : 1
+export function PomodoroLauncher({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <Button
+      type="button"
+      size="icon-lg"
+      data-pomodoro-launcher
+      aria-expanded={open}
+      aria-label={open ? 'Close Pomodoro timer' : 'Open Pomodoro timer'}
+      className="fixed right-4 bottom-6 z-50 size-16 overflow-hidden rounded-full border-[3px] border-[var(--pomodoro-ring)] bg-[var(--pomodoro-ring)] p-0 shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] transition-transform hover:bg-[var(--pomodoro-ring)] hover:scale-105 sm:right-7 sm:bottom-8"
+      onClick={onClick}
+    >
+      <span className="pomodoro-tomato-face absolute inset-[7%] overflow-hidden rounded-full">
+        <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex justify-center">
+          {LAUNCHER_TICK_MARKS.map((tick) => (
+            <span className="absolute inset-0 flex justify-center" key={tick} style={{ transform: `rotate(${tick * 22.5}deg)` }}>
+              <span className="mt-[3%] block h-[11%] w-[3%] rounded-full bg-[var(--pomodoro-tick)]" />
+            </span>
+          ))}
+        </span>
+        <TomatoCalyx className="top-[13%] h-[38%] w-[68%]" />
+      </span>
+    </Button>
+  )
+}
+
+export function PomodoroTimer({ onClose }: { onClose: () => void }) {
+  const { data, updateSettings } = useStudyData()
+  const [mode, setMode] = useState<PomodoroMode>('focus')
+  const [preciseDuration, setPreciseDuration] = useState(() => String(data.settings.pomodoro.focusMinutes))
+  const [isRunning, setIsRunning] = useState(false)
+  const [hasStarted, setHasStarted] = useState(false)
+  const [remainingSeconds, setRemainingSeconds] = useState(() => data.settings.pomodoro.focusMinutes * 60)
+  const [sessionDurationMinutes, setSessionDurationMinutes] = useState<number | null>(null)
+  const modeConfig = TIMER_MODES[mode]
+  const duration = data.settings.pomodoro[modeConfig.durationKey]
 
   useEffect(() => {
     if (!isRunning) return
-    const intervalId = window.setInterval(() => setNow(Date.now()), 1000)
+
+    const intervalId = window.setInterval(() => {
+      setRemainingSeconds((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
+
     return () => window.clearInterval(intervalId)
   }, [isRunning])
 
   useEffect(() => {
-    if (!isActive) setDraftDuration(data.timer.selectedDurationMinutes)
-  }, [data.timer.selectedDurationMinutes, isActive])
+    if (isRunning && remainingSeconds === 0) setIsRunning(false)
+  }, [isRunning, remainingSeconds])
 
-  useEffect(() => {
-    if (data.activity.completedFocusSessions <= previousCompletedSessions.current) {
-      previousCompletedSessions.current = data.activity.completedFocusSessions
-      return
+  function setDurationValue(value: number) {
+    const nextDuration = clampDuration(value)
+    const saved = updateSettings({ pomodoro: { [modeConfig.durationKey]: nextDuration } })
+    setPreciseDuration(saved ? String(nextDuration) : String(duration))
+    if (!isRunning) {
+      setHasStarted(false)
+      setSessionDurationMinutes(null)
+      setRemainingSeconds(nextDuration * 60)
     }
-
-    previousCompletedSessions.current = data.activity.completedFocusSessions
-    if (data.settings.pomodoro.soundEnabled) playCompletionSound()
-    if (data.settings.pomodoro.notificationsEnabled && notificationPermission === 'granted') {
-      try {
-        new Notification('Focus session complete', { body: 'Your next study interval is ready.' })
-      } catch {
-        // Permission can be revoked between checking it and constructing a notification.
-      }
-    }
-  }, [data.activity.completedFocusSessions, data.settings.pomodoro.notificationsEnabled, data.settings.pomodoro.soundEnabled, notificationPermission])
-
-  function commitDuration(value: number) {
-    const nextValue = Math.min(POMODORO_MINUTES_MAX, Math.max(POMODORO_MINUTES_MIN, Math.round(value)))
-    setDraftDuration(nextValue)
-    adjustPomodoroDuration(nextValue)
-  }
-
-  function getSliderValue(value: number | readonly number[]) {
-    return typeof value === 'number' ? value : value[0] ?? draftDuration
-  }
-
-  function getMinutesFromPointer(event: PointerEvent<HTMLDivElement>) {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const x = event.clientX - (bounds.left + bounds.width / 2)
-    const y = event.clientY - (bounds.top + bounds.height / 2)
-    const angle = (Math.atan2(x, -y) + Math.PI * 2) % (Math.PI * 2)
-    return POMODORO_MINUTES_MIN + Math.round((angle / (Math.PI * 2)) * (POMODORO_MINUTES_MAX - POMODORO_MINUTES_MIN))
-  }
-
-  function handlePointerStart(event: PointerEvent<HTMLDivElement>) {
-    if (isActive) return
-    dialPointerId.current = event.pointerId
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setDraftDuration(getMinutesFromPointer(event))
-  }
-
-  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (dialPointerId.current !== event.pointerId) return
-    setDraftDuration(getMinutesFromPointer(event))
-  }
-
-  function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
-    if (dialPointerId.current !== event.pointerId) return
-    dialPointerId.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    commitDuration(getMinutesFromPointer(event))
-  }
-
-  function handleDialKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (isActive) return
-    const current = draftDuration
-    const step = event.shiftKey ? 5 : 1
-    let next = current
-    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') next = current + step
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') next = current - step
-    if (event.key === 'PageUp') next = current + 5
-    if (event.key === 'PageDown') next = current - 5
-    if (event.key === 'Home') next = POMODORO_MINUTES_MIN
-    if (event.key === 'End') next = POMODORO_MINUTES_MAX
-    if (next === current) return
-    event.preventDefault()
-    commitDuration(next)
   }
 
   function handleModeChange(value: string[]) {
-    const mode = value[0]
-    if (mode !== 'focus' && mode !== 'short-break' && mode !== 'long-break') return
-    if (isActive) {
-      setPendingMode(mode)
-      return
-    }
-    selectPomodoroMode(mode)
+    const nextMode = value[0]
+    if (nextMode !== 'focus' && nextMode !== 'short-break' && nextMode !== 'long-break') return
+
+    const nextDuration = data.settings.pomodoro[TIMER_MODES[nextMode].durationKey]
+    setMode(nextMode)
+    setPreciseDuration(String(nextDuration))
+    setIsRunning(false)
+    setHasStarted(false)
+    setSessionDurationMinutes(null)
+    setRemainingSeconds(nextDuration * 60)
   }
 
-  async function requestNotificationPermission() {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      setNotificationPermission('unsupported')
-      return
-    }
-    const permission = await Notification.requestPermission()
-    setNotificationPermission(permission)
+  function handleReset() {
+    setIsRunning(false)
+    setHasStarted(false)
+    setSessionDurationMinutes(null)
+    setRemainingSeconds(duration * 60)
   }
 
-  const notificationMessage = notificationPermission === 'unsupported'
-    ? 'This browser does not support notifications.'
-    : notificationPermission === 'denied'
-      ? 'Notifications are blocked in this browser; the timer will still run.'
-      : notificationPermission === 'granted'
-        ? 'Browser notifications are ready.'
-        : 'Allow browser notifications when a Focus session completes.'
+  function handlePlayPause() {
+    if (remainingSeconds === 0) setRemainingSeconds(duration * 60)
+    if (!isRunning) {
+      setSessionDurationMinutes(duration)
+      setHasStarted(true)
+    }
+    setIsRunning((running) => !running)
+  }
+
+  function handlePreciseDurationChange(value: string) {
+    setPreciseDuration(value)
+    if (value === '') return
+
+    const parsedValue = Number(value)
+    if (Number.isFinite(parsedValue)) setDurationValue(parsedValue)
+  }
+
+  function commitPreciseDuration() {
+    const parsedValue = Number(preciseDuration)
+    setDurationValue(Number.isFinite(parsedValue) ? parsedValue : duration)
+  }
+
+  const indicatorAngle = hasStarted
+    ? getCountdownAngle(remainingSeconds, sessionDurationMinutes ?? duration)
+    : getIndicatorAngle(duration)
 
   return (
-    <aside
-      className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex w-[min(25rem,calc(100vw-2rem))] flex-col items-end gap-3 sm:right-6"
-      aria-label="Pomodoro timer"
-    >
-      {isOpen && (
-        <Card className="w-full border border-border/80 bg-card/95 shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/85">
-          <CardHeader className="flex-row items-start justify-between gap-4 p-5 pb-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Pomodoro</p>
-              <CardTitle className="mt-2 text-2xl">A gentler focus rhythm</CardTitle>
-              <CardDescription className="mt-1">Choose a mode, set the interval, then return to your study path.</CardDescription>
-            </div>
-            <Button type="button" variant="ghost" size="icon-sm" aria-label="Close Pomodoro timer" onClick={() => setIsOpen(false)}>
-              <X aria-hidden="true" />
+    <Card className="pomodoro-panel my-auto w-full max-w-3xl overflow-hidden rounded-none border-0 px-1 py-1 lg:my-0 lg:rounded-[2rem] lg:border">
+      <CardHeader className="relative w-full gap-2 px-5 pb-0 pt-6 text-left sm:px-8 sm:pt-7">
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Close Pomodoro panel"
+          className="absolute top-4 right-4 rounded-full bg-[var(--pomodoro-panel-raised)] text-[var(--pomodoro-ink)] hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] focus-visible:ring-[var(--pomodoro-control)]/50 sm:top-5 sm:right-5"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" />
+        </Button>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--pomodoro-muted)]">Pomodoro</p>
+        <CardTitle className="font-heading text-2xl font-semibold tracking-tight text-[var(--pomodoro-ink)] sm:text-3xl">Set your session length</CardTitle>
+        <p className="max-w-xl text-base leading-relaxed text-[var(--pomodoro-muted)]">Customize your focus and break sessions to fit your study routine.</p>
+        <ToggleGroup value={[mode]} onValueChange={handleModeChange} aria-label="Pomodoro timer mode" className="w-full gap-1 bg-transparent p-0 sm:w-fit">
+          {Object.entries(TIMER_MODES).map(([value, timerMode]) => (
+            <ToggleGroupItem
+              key={value}
+              value={value}
+              className="flex min-h-11 flex-1 items-center justify-center rounded-xl px-3.5 py-2.5 text-base font-medium text-[var(--pomodoro-muted)] transition-colors hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--pomodoro-control)]/50 aria-pressed:bg-[var(--pomodoro-panel-raised)] aria-pressed:text-[var(--pomodoro-ink)] sm:flex-none"
+            >
+              {timerMode.modeLabel}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </CardHeader>
+
+      <CardContent className="flex w-full flex-col items-stretch gap-5 px-5 pb-6 pt-4 sm:gap-6 sm:px-8 sm:pb-7">
+        <TomatoDial duration={duration} indicatorAngle={indicatorAngle} label={modeConfig.label} timerSeconds={remainingSeconds} onDurationChange={setDurationValue} />
+
+        <div className="flex w-full max-w-3xl flex-col gap-5">
+          <div className="flex w-full gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-w-0 flex-1 border-[color-mix(in_oklab,var(--pomodoro-ink)_15%,transparent)] bg-[var(--pomodoro-panel-raised)] text-[var(--pomodoro-ink)] hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] dark:bg-[var(--pomodoro-panel-raised)] dark:hover:bg-[var(--pomodoro-panel-raised)]"
+              onClick={handlePlayPause}
+            >
+              {isRunning ? <Pause aria-hidden="true" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
+              {isRunning ? 'Pause' : 'Play'}
             </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5 p-5 pt-2">
-            <ToggleGroup value={[data.timer.selectedMode]} onValueChange={handleModeChange} aria-label="Pomodoro mode" className="w-full">
-              <ToggleGroupItem value="focus" className="flex-1">Focus</ToggleGroupItem>
-              <ToggleGroupItem value="short-break" className="flex-1">Short Break</ToggleGroupItem>
-              <ToggleGroupItem value="long-break" className="flex-1">Long Break</ToggleGroupItem>
-            </ToggleGroup>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-w-0 flex-1 border-[color-mix(in_oklab,var(--pomodoro-ink)_15%,transparent)] bg-muted/60 text-[var(--pomodoro-muted)] hover:bg-muted hover:text-[var(--pomodoro-ink)]"
+              onClick={handleReset}
+            >
+              <RotateCcw aria-hidden="true" data-icon="inline-start" />
+              Reset
+            </Button>
+          </div>
 
-            <TomatoDial
-              minutes={selectedMinutes}
-              remainingSeconds={remainingSeconds}
-              progress={progress}
-              disabled={isActive}
-              onPointerStart={handlePointerStart}
-              onPointerMove={handlePointerMove}
-              onPointerEnd={handlePointerEnd}
-              onKeyDown={handleDialKeyDown}
-            />
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-4 text-sm font-medium text-muted-foreground">
-                <span>Duration</span>
-                <span className="tabular-nums">{selectedMinutes} min</span>
+          <div className="flex w-full flex-col gap-3">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-base font-semibold text-[var(--pomodoro-ink)]">Session length</p>
+              <div className="flex shrink-0 items-center gap-2">
+                <Input
+                  aria-label="Session duration in minutes"
+                  className="h-11 w-20 text-center font-normal text-base tabular-nums text-[var(--pomodoro-ink)] placeholder:text-[var(--pomodoro-muted)]"
+                  id="pomodoro-duration-input"
+                  inputMode="numeric"
+                  max={MAX_DURATION_MINUTES}
+                  min={MIN_DURATION_MINUTES}
+                  onBlur={commitPreciseDuration}
+                  onChange={(event) => handlePreciseDurationChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') event.currentTarget.blur()
+                  }}
+                  type="number"
+                  value={preciseDuration}
+                />
+                <span className="text-base font-normal tabular-nums text-[var(--pomodoro-ink)]">minutes</span>
               </div>
-              <Slider
-                aria-label="Pomodoro duration"
-                className="py-2"
-                disabled={isActive}
-                max={POMODORO_MINUTES_MAX}
-                min={POMODORO_MINUTES_MIN}
-                onValueChange={(value) => setDraftDuration(getSliderValue(value))}
-                onValueCommitted={(value) => commitDuration(getSliderValue(value))}
-                step={1}
-                value={[draftDuration]}
-              />
-              <div className="flex justify-between text-xs text-muted-foreground"><span>1 min</span><span>120 min</span></div>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              {!isActive && <Button type="button" className="min-w-28 flex-1" onClick={() => startPomodoro()}><Play aria-hidden="true" data-icon="inline-start" />Start</Button>}
-              {isRunning && <Button type="button" className="min-w-28 flex-1" variant="secondary" onClick={() => pausePomodoro()}><Pause aria-hidden="true" data-icon="inline-start" />Pause</Button>}
-              {isPaused && <Button type="button" className="min-w-28 flex-1" onClick={() => resumePomodoro()}><Play aria-hidden="true" data-icon="inline-start" />Resume</Button>}
-              {isActive && <Button type="button" variant="outline" onClick={() => resetPomodoro()}><RotateCcw aria-hidden="true" data-icon="inline-start" />Reset</Button>}
+            <Slider
+              aria-label="Session length"
+              className="pomodoro-slider py-3"
+              id="pomodoro-duration-slider"
+              max={MAX_DURATION_MINUTES}
+              min={MIN_DURATION_MINUTES}
+              onValueChange={(value) => setDurationValue(Array.isArray(value) ? value[0] ?? duration : value)}
+              step={1}
+              value={[duration]}
+            />
+            <div className="flex justify-between text-base text-[var(--pomodoro-muted)]">
+              <span>1 minute</span>
+              <span>120 minutes</span>
             </div>
-
-            <div className="flex flex-col gap-3 rounded-xl bg-muted/45 p-3">
-              <div className="flex items-center gap-2 text-sm font-medium"><Clock3 aria-hidden="true" className="size-4 text-primary" />{getPomodoroModeLabel(data.timer.selectedMode)} · {isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready'}</div>
-              {data.settings.pomodoro.notificationsEnabled && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-sm leading-relaxed text-muted-foreground">{notificationMessage}</p>
-                  {notificationPermission === 'default' && <Button type="button" variant="outline" size="sm" className="w-fit" onClick={requestNotificationPermission}><Bell aria-hidden="true" data-icon="inline-start" />Enable notifications</Button>}
-                  {notificationPermission === 'granted' && <p className="flex items-center gap-2 text-sm font-medium text-accent-foreground"><Check aria-hidden="true" className="size-4" />Notifications enabled</p>}
-                </div>
-              )}
-              {data.settings.pomodoro.soundEnabled && <p className="flex items-center gap-2 text-sm text-muted-foreground"><Volume2 aria-hidden="true" className="size-4" />Sound alert is enabled in Settings.</p>}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-auto min-h-14 rounded-2xl px-3 py-2 shadow-xl"
-        aria-expanded={isOpen}
-        aria-label={isOpen ? 'Close Pomodoro timer' : 'Open Pomodoro timer'}
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        <span className="relative flex size-10 items-center justify-center rounded-full border-4 border-destructive/70 bg-destructive text-xs font-semibold text-white">
-          <span aria-hidden="true" className="absolute -top-1.5 left-1/2 h-2.5 w-5 -translate-x-1/2 rounded-full bg-accent-foreground" />
-          {isActive ? Math.max(0, Math.ceil(remainingSeconds / 60)) : data.timer.selectedDurationMinutes}
-        </span>
-        <span className="flex flex-col items-start gap-0.5 pr-1 text-left">
-          <span className="text-sm font-semibold">{getPomodoroModeLabel(data.timer.selectedMode)}</span>
-          <span className="text-xs text-muted-foreground">{isRunning ? formatTime(remainingSeconds) : isPaused ? 'Paused' : 'Start timer'}</span>
-        </span>
-        <ChevronDown aria-hidden="true" className={cn('size-4 transition-transform', isOpen && 'rotate-180')} />
-      </Button>
-
-      <AlertDialog open={pendingMode !== null} onOpenChange={(open) => { if (!open) setPendingMode(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch Pomodoro mode?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will abandon the current {isPaused ? 'paused' : 'running'} {getPomodoroModeLabel(data.timer.selectedMode)} session. It will not count as completed, and the new mode will use its saved default duration.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep current session</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (pendingMode) abandonPomodoroSession(pendingMode); setPendingMode(null) }}>Switch mode</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </aside>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
