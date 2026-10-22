@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --background: oklch(0.977 0.008 210);
+  --foreground: oklch(0.25 0.035 230);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.035 230);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.035 230);
+  --primary: oklch(0.49 0.13 235);
+  --primary-foreground: oklch(0.985 0.008 210);
+  --secondary: oklch(0.93 0.028 195);
+  --secondary-foreground: oklch(0.36 0.07 220);
+  --muted: oklch(0.945 0.012 210);
+  --muted-foreground: oklch(0.5 0.03 220);
+  --accent: oklch(0.93 0.055 155);
+  --accent-foreground: oklch(0.36 0.075 155);
+  --destructive: oklch(0.55 0.17 28);
+  --border: oklch(0.88 0.025 210);
+  --input: oklch(0.88 0.025 210);
+  --ring: oklch(0.67 0.1 215);
+  --radius: 1rem;
+  --chart-1: oklch(0.49 0.13 235);
+  --chart-2: oklch(0.57 0.11 155);
+  --chart-3: oklch(0.7 0.1 75);
+  --chart-4: oklch(0.6 0.11 295);
+  --chart-5: oklch(0.6 0.12 30);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-heading: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --font-sans: "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  --radius-sm: calc(var(--radius) - 0.5rem);
+  --radius-md: calc(var(--radius) - 0.25rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) * 1.4);
+  --radius-3xl: calc(var(--radius) * 1.8);
+  --radius-4xl: calc(var(--radius) * 2.2);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+::selection {
+  background: #b9ddec;
+  color: #143a51;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.2 0.025 230);
+  --foreground: oklch(0.94 0.015 210);
+  --card: oklch(0.25 0.03 230);
+  --card-foreground: oklch(0.94 0.015 210);
+  --popover: oklch(0.25 0.03 230);
+  --popover-foreground: oklch(0.94 0.015 210);
+  --primary: oklch(0.7 0.11 215);
+  --primary-foreground: oklch(0.2 0.025 230);
+  --secondary: oklch(0.31 0.04 220);
+  --secondary-foreground: oklch(0.9 0.03 205);
+  --muted: oklch(0.3 0.03 230);
+  --muted-foreground: oklch(0.72 0.03 210);
+  --accent: oklch(0.35 0.065 155);
+  --accent-foreground: oklch(0.9 0.04 155);
+  --destructive: oklch(0.7 0.14 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.11 215);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
