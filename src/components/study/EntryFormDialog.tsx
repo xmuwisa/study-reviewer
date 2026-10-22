@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ClipboardEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -49,7 +49,7 @@ export function EntryFormDialog({
   const rightLabel = isTermDefinition ? 'Definition' : 'Answer'
   const entryTypeLabel = isTermDefinition ? 'term and definition' : 'question and answer'
 
-  function preventClipboardAction(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+  function preventClipboardAction(event: ClipboardEvent<HTMLTextAreaElement>) {
     if (!allowCopyPaste) event.preventDefault()
   }
 

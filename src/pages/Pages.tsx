@@ -12,6 +12,8 @@ import {
   FolderPlus,
   FolderOpen,
   Layers3,
+  Monitor,
+  Moon,
   Pencil,
   Plus,
   RotateCcw,
@@ -19,12 +21,10 @@ import {
   Sparkles,
   Shuffle,
   Sun,
-  Moon,
-  Monitor,
   Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Dispatch, KeyboardEvent, ReactNode, SetStateAction } from 'react'
+import type { Dispatch, KeyboardEvent, MouseEvent, PointerEvent, ReactNode, SetStateAction, TransitionEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialog'
@@ -33,17 +33,18 @@ import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
 import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Input } from '@/components/ui/input'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { createDefaultSettings, findCategory, findTopic, getEntriesForTopic, getTopicsForCategory, type Category, type Entry, type FlashcardFrontSide, type StudyMode, type Topic } from '@/lib/study-data'
 import { useStudyData } from '@/lib/use-study-data'
+import { cn } from '@/lib/utils'
 import {
   filterAndSortCategories,
   filterAndSortEntries,
@@ -58,6 +59,10 @@ const EMPTY_ENTRY_FORM_VALUES: EntryFormValues = { type: 'question-answer', ques
 
 function SectionLabel({ children }: { children: string }) {
   return <p className="text-base font-medium text-muted-foreground">{children}</p>
+}
+
+function getFlashcardDefaultDescription(frontSide: FlashcardFrontSide, leftLabel: string, rightLabel: string) {
+  return `Default: ${frontSide === 'left' ? leftLabel : rightLabel} first.`
 }
 
 function PageHeading({ title, description }: { title: string; description: string }) {
@@ -110,20 +115,20 @@ function DashboardStatCard({
   to?: string
 }) {
   const card = (
-      <Card className="h-full bg-card/80 transition-colors group-hover:bg-card">
-        <CardHeader className="flex-row items-start justify-between gap-3 p-5 pb-3">
-          <div>
-            <CardDescription>{label}</CardDescription>
-            <CardTitle className="mt-2 text-3xl tracking-tight">{value}</CardTitle>
-          </div>
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-            {icon}
-          </div>
-        </CardHeader>
-        <CardContent className="p-5 pt-0">
-          <p className="text-base leading-relaxed text-muted-foreground">{description}</p>
-        </CardContent>
-      </Card>
+    <Card className="h-full bg-card/80 transition-colors group-hover:bg-card">
+      <CardHeader className="flex-row items-start justify-between gap-3 p-5 pb-3">
+        <div>
+          <CardDescription>{label}</CardDescription>
+          <CardTitle className="mt-2 text-3xl tracking-tight">{value}</CardTitle>
+        </div>
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+          {icon}
+        </div>
+      </CardHeader>
+      <CardContent className="p-5 pt-0">
+        <p className="text-base leading-relaxed text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
   )
 
   return to ? <Link to={to} className="group rounded-2xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{card}</Link> : card
@@ -323,25 +328,55 @@ function getFlashcardText(entry: Entry, side: FlashcardFrontSide) {
   return side === 'left' ? entry.question : entry.answer
 }
 
+const FLASHCARD_SWIPE_DURATION = 800
+const FLASHCARD_DRAG_INTENT_THRESHOLD = 12
+const FLASHCARD_CAROUSEL_GAP = 24
+type FlashcardInteractionPhase = 'idle' | 'dragging' | 'flipping' | 'returning' | 'navigating'
+
 function FlashcardMode({
   entries,
   frontByEntryType,
-  onEdit,
-  onDelete,
 }: {
   entries: Entry[]
   frontByEntryType: Record<Entry['type'], FlashcardFrontSide>
-  onEdit: (entry: Entry) => void
-  onDelete: (entry: Entry) => void
 }) {
   const entryIds = useMemo(() => entries.map((entry) => entry.id), [entries])
   const entryIdentity = entryIds.join('|')
   const [currentEntryId, setCurrentEntryId] = useState<string | null>(() => entryIds[0] ?? null)
   const [flipped, setFlipped] = useState(false)
   const [sessionOrder, setSessionOrder] = useState<string[] | null>(null)
+  const [dragX, setDragX] = useState(0)
+  const [incomingX, setIncomingX] = useState<number | null>(null)
+  const [carouselDirection, setCarouselDirection] = useState<'next' | 'previous' | null>(null)
+  const [interactionPhase, setInteractionPhaseState] = useState<FlashcardInteractionPhase>('idle')
   const previousEntryIdsRef = useRef(entryIds)
   const currentEntryIdRef = useRef(currentEntryId)
+  const interactionPhaseRef = useRef<FlashcardInteractionPhase>('idle')
+  const pointerStartRef = useRef<{ id: number; x: number; y: number } | null>(null)
+  const pointerAxisRef = useRef<'horizontal' | 'vertical' | null>(null)
+  const didDragRef = useRef(false)
+  const transitionFallbackRef = useRef<number | null>(null)
+  const navigationFrameRef = useRef<number | null>(null)
+  const pendingNavigationIdRef = useRef<string | null>(null)
+  const carouselStageRef = useRef<HTMLDivElement | null>(null)
   currentEntryIdRef.current = currentEntryId
+
+  function setInteractionPhase(nextPhase: FlashcardInteractionPhase) {
+    interactionPhaseRef.current = nextPhase
+    setInteractionPhaseState(nextPhase)
+  }
+
+  const clearTransitionFallback = () => {
+    if (transitionFallbackRef.current === null) return
+    window.clearTimeout(transitionFallbackRef.current)
+    transitionFallbackRef.current = null
+  }
+
+  const clearNavigationFrame = () => {
+    if (navigationFrameRef.current === null) return
+    window.cancelAnimationFrame(navigationFrameRef.current)
+    navigationFrameRef.current = null
+  }
 
   useEffect(() => {
     const previousIndex = previousEntryIdsRef.current.indexOf(currentEntryIdRef.current ?? '')
@@ -353,8 +388,19 @@ function FlashcardMode({
     setCurrentEntryId(nextEntryId)
     setFlipped(false)
     setSessionOrder(null)
+    setDragX(0)
+    setIncomingX(null)
+    setCarouselDirection(null)
+    pendingNavigationIdRef.current = null
+    clearTransitionFallback()
+    clearNavigationFrame()
+    setInteractionPhase('idle')
     previousEntryIdsRef.current = entryIds
   }, [entryIdentity, entryIds])
+
+  useEffect(() => {
+    return clearTransitionFallback
+  }, [])
 
   const orderedEntries = useMemo(() => {
     if (!sessionOrder) return entries
@@ -374,9 +420,14 @@ function FlashcardMode({
     if (!nextEntry) return
     setCurrentEntryId(nextEntry.id)
     setFlipped(false)
+    setDragX(0)
+    setIncomingX(null)
+    setCarouselDirection(null)
+    setInteractionPhase('idle')
   }
 
   function shuffleCards() {
+    if (interactionPhase !== 'idle') return
     const shuffled = entries.map((entry) => entry.id)
     for (let index = shuffled.length - 1; index > 0; index -= 1) {
       const randomIndex = Math.floor(Math.random() * (index + 1))
@@ -387,6 +438,235 @@ function FlashcardMode({
     setSessionOrder(shuffled)
     setCurrentEntryId(shuffled[0] ?? null)
     setFlipped(false)
+    setDragX(0)
+    setIncomingX(null)
+    setCarouselDirection(null)
+    setInteractionPhase('idle')
+  }
+
+  function startSwipe(direction: 'next' | 'previous') {
+    if (interactionPhase !== 'idle' && interactionPhase !== 'dragging') return
+
+    const targetIndex = currentIndex + (direction === 'next' ? 1 : -1)
+    const targetEntry = orderedEntries[targetIndex]
+    if (!targetEntry) return
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const { exitX, incomingStartX } = getCarouselTravel(direction)
+    pendingNavigationIdRef.current = targetEntry.id
+    clearTransitionFallback()
+    clearNavigationFrame()
+    setCarouselDirection(direction)
+    setIncomingX(incomingStartX + dragX)
+    setInteractionPhase('navigating')
+    if (prefersReducedMotion) {
+      setDragX(exitX)
+      setIncomingX(0)
+    } else {
+      navigationFrameRef.current = window.requestAnimationFrame(() => {
+        navigationFrameRef.current = null
+        if (interactionPhaseRef.current === 'navigating') {
+          setDragX(exitX)
+          setIncomingX(0)
+        }
+      })
+    }
+    transitionFallbackRef.current = window.setTimeout(() => {
+      completeNavigation()
+    }, prefersReducedMotion ? 0 : FLASHCARD_SWIPE_DURATION + 50)
+  }
+
+  function completeNavigation() {
+    if (interactionPhaseRef.current !== 'navigating') return
+    const targetEntryId = pendingNavigationIdRef.current
+    pendingNavigationIdRef.current = null
+    clearTransitionFallback()
+    clearNavigationFrame()
+    setIncomingX(null)
+    if (!targetEntryId) {
+      setDragX(0)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+      return
+    }
+    const targetIndex = orderedEntries.findIndex((entry) => entry.id === targetEntryId)
+    if (targetIndex === -1) {
+      setDragX(0)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+      return
+    }
+    moveTo(targetIndex)
+  }
+
+  function getCarouselTravel(direction: 'next' | 'previous') {
+    const stageRect = carouselStageRef.current?.getBoundingClientRect()
+    const baseLeft = stageRect?.left ?? 0
+    const baseRight = stageRect?.right ?? window.innerWidth
+    const leftExit = -(baseRight + FLASHCARD_CAROUSEL_GAP)
+    const rightExit = window.innerWidth - baseLeft + FLASHCARD_CAROUSEL_GAP
+
+    return {
+      exitX: direction === 'next' ? leftExit : rightExit,
+      incomingStartX: direction === 'next' ? rightExit : leftExit,
+    }
+  }
+
+  function returnToCenter(direction: 'next' | 'previous' | null) {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    clearTransitionFallback()
+    clearNavigationFrame()
+    setCarouselDirection(direction)
+    setIncomingX(direction ? dragX + getCarouselTravel(direction).incomingStartX : null)
+    setDragX(0)
+    if (prefersReducedMotion) {
+      setIncomingX(null)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+      return
+    }
+    setInteractionPhase('returning')
+    transitionFallbackRef.current = window.setTimeout(() => {
+      transitionFallbackRef.current = null
+      if (interactionPhaseRef.current === 'returning') {
+        setIncomingX(null)
+        setCarouselDirection(null)
+        setInteractionPhase('idle')
+      }
+    }, FLASHCARD_SWIPE_DURATION + 50)
+  }
+
+  function flipCard() {
+    if (interactionPhase !== 'idle') return
+    setFlipped((current) => !current)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    setInteractionPhase('flipping')
+  }
+
+  function handleCardKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault()
+      flipCard()
+      return
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      startSwipe('previous')
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      startSwipe('next')
+    }
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    const phase = interactionPhaseRef.current
+    if (phase === 'flipping') return
+    if (phase === 'navigating') completeNavigation()
+    if (phase === 'returning') {
+      clearTransitionFallback()
+      clearNavigationFrame()
+      setDragX(0)
+      setIncomingX(null)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+    }
+    pointerStartRef.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+    pointerAxisRef.current = null
+    didDragRef.current = false
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const start = pointerStartRef.current
+    const phase = interactionPhaseRef.current
+    if (!start || start.id !== event.pointerId || (phase !== 'idle' && phase !== 'dragging') || pointerAxisRef.current === 'vertical') return
+
+    const deltaX = event.clientX - start.x
+    const deltaY = event.clientY - start.y
+    if (!pointerAxisRef.current && Math.hypot(deltaX, deltaY) < FLASHCARD_DRAG_INTENT_THRESHOLD) return
+    if (!pointerAxisRef.current) {
+      pointerAxisRef.current = Math.abs(deltaY) > Math.abs(deltaX) * 1.25 ? 'vertical' : 'horizontal'
+    }
+    didDragRef.current = true
+    if (pointerAxisRef.current !== 'horizontal') return
+
+    event.preventDefault()
+    setIncomingX(null)
+    setCarouselDirection(deltaX < 0 ? 'next' : 'previous')
+    setInteractionPhase('dragging')
+    const maxDrag = Math.max((carouselStageRef.current?.clientWidth ?? 640) * 0.92, 320)
+    setDragX(Math.max(-maxDrag, Math.min(maxDrag, deltaX)))
+  }
+
+  function handlePointerEnd(event: PointerEvent<HTMLDivElement>) {
+    const start = pointerStartRef.current
+    if (!start || start.id !== event.pointerId) return
+
+    const wasDragging = pointerAxisRef.current === 'horizontal'
+    const deltaX = event.clientX - start.x
+    pointerStartRef.current = null
+    pointerAxisRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    if (!wasDragging) {
+      setDragX(0)
+      setIncomingX(null)
+      if (didDragRef.current) {
+        window.setTimeout(() => {
+          didDragRef.current = false
+        }, 100)
+      }
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+      return
+    }
+
+    window.setTimeout(() => {
+      didDragRef.current = false
+    }, 100)
+
+    const direction = deltaX < 0 ? 'next' : 'previous'
+    const threshold = Math.min(128, Math.max(88, event.currentTarget.clientWidth * 0.22))
+    if (Math.abs(deltaX) < threshold || !orderedEntries[currentIndex + (direction === 'next' ? 1 : -1)]) {
+      returnToCenter(direction)
+      return
+    }
+
+    startSwipe(direction)
+  }
+
+  function handlePointerCancel(event: PointerEvent<HTMLDivElement>) {
+    if (!pointerStartRef.current || pointerStartRef.current.id !== event.pointerId) return
+    const wasDragging = pointerAxisRef.current === 'horizontal'
+    pointerStartRef.current = null
+    pointerAxisRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    didDragRef.current = false
+    if (wasDragging) returnToCenter(dragX < 0 ? 'next' : 'previous')
+    else {
+      setIncomingX(null)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+    }
+  }
+
+  function handleCardTransitionEnd(event: TransitionEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return
+    if (interactionPhaseRef.current === 'navigating') {
+      completeNavigation()
+    } else if (interactionPhaseRef.current === 'returning') {
+      clearTransitionFallback()
+      setIncomingX(null)
+      setCarouselDirection(null)
+      setInteractionPhase('idle')
+    } else if (interactionPhaseRef.current === 'flipping') {
+      setInteractionPhase('idle')
+    }
   }
 
   if (!currentEntry) return null
@@ -394,60 +674,110 @@ function FlashcardMode({
   const defaultFront: FlashcardFrontSide = currentEntry.type === 'term-definition' ? 'right' : 'left'
   const frontSide = frontByEntryType[currentEntry.type] ?? defaultFront
   const backSide: FlashcardFrontSide = frontSide === 'left' ? 'right' : 'left'
-  const visibleSide = flipped ? backSide : frontSide
-  const visibleLabel = getFlashcardLabel(currentEntry, visibleSide)
-  const visibleText = getFlashcardText(currentEntry, visibleSide)
+  const frontLabel = getFlashcardLabel(currentEntry, frontSide)
+  const frontText = getFlashcardText(currentEntry, frontSide)
+  const backLabel = getFlashcardLabel(currentEntry, backSide)
+  const backText = getFlashcardText(currentEntry, backSide)
+  const dragDirection = dragX < 0 ? 'next' : dragX > 0 ? 'previous' : null
+  const previewDirection = interactionPhase === 'dragging' ? dragDirection : carouselDirection
+  const previewEntry = previewDirection
+    ? orderedEntries[currentIndex + (previewDirection === 'next' ? 1 : -1)]
+    : undefined
+  const previewFrontSide = previewEntry
+    ? frontByEntryType[previewEntry.type] ?? (previewEntry.type === 'term-definition' ? 'right' : 'left')
+    : null
+  const previewLabel = previewEntry && previewFrontSide ? getFlashcardLabel(previewEntry, previewFrontSide) : null
+  const previewText = previewEntry && previewFrontSide ? getFlashcardText(previewEntry, previewFrontSide) : null
+  const previewStartX = previewDirection ? getCarouselTravel(previewDirection).incomingStartX : 0
+  const previewX = incomingX ?? (dragX + previewStartX)
+
+  function renderFace(label: string, text: string, isBack: boolean) {
+    const isVisible = isBack ? flipped : !flipped
+
+    return (
+      <button
+        type="button"
+        className={cn(
+          'flashcard-face absolute inset-0 flex min-h-64 w-full flex-col items-center justify-center gap-5 rounded-2xl bg-card px-6 py-10 text-center focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-80 sm:px-16 sm:py-12',
+          isBack ? 'flashcard-face-back' : 'flashcard-face-front',
+        )}
+        aria-hidden={!isVisible}
+        aria-label={`${isBack ? 'Show front' : 'Show back'} of ${label.toLowerCase()}`}
+        aria-keyshortcuts="Space ArrowLeft ArrowRight"
+        tabIndex={isVisible ? 0 : -1}
+        onKeyDown={handleCardKeyDown}
+      >
+        <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{label}</span>
+        <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{text}</span>
+      </button>
+    )
+  }
+
+  function handleCardClick(event: MouseEvent<HTMLDivElement>) {
+    if (didDragRef.current) {
+      event.preventDefault()
+      event.stopPropagation()
+      didDragRef.current = false
+      return
+    }
+    flipCard()
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <Card className="relative overflow-hidden bg-card/80">
-        <CardHeader className="flex-row items-start justify-between gap-4 p-6 sm:p-8">
-          <div className="flex flex-col gap-2">
-            <Badge variant="secondary" className="w-fit border-0 bg-secondary/70">{flipped ? 'Back' : 'Front'}</Badge>
-            <CardTitle className="text-2xl sm:text-3xl">{visibleLabel}</CardTitle>
-          </div>
-          <EntryActions entry={currentEntry} onEdit={() => onEdit(currentEntry)} onDelete={() => onDelete(currentEntry)} />
-        </CardHeader>
-        <CardContent className="p-0">
-          <button
-            type="button"
-            className="flex min-h-72 w-full flex-col items-center justify-center gap-6 bg-card px-6 py-12 text-center transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring sm:min-h-96 sm:px-16"
-            aria-label={`${flipped ? 'Show front' : 'Show back'} of ${visibleLabel.toLowerCase()}`}
-            aria-keyshortcuts="Space ArrowLeft ArrowRight"
-            onClick={() => setFlipped((current) => !current)}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowLeft') {
-                event.preventDefault()
-                moveTo(currentIndex - 1)
-              }
-              if (event.key === 'ArrowRight') {
-                event.preventDefault()
-                moveTo(currentIndex + 1)
-              }
-            }}
+      <div
+        ref={carouselStageRef}
+        className="flashcard-stage relative min-h-64 touch-pan-y sm:min-h-80"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerCancel}
+        onClick={handleCardClick}
+      >
+        <div className="flashcard-carousel-viewport absolute inset-0">
+          <div
+            key={`current-${currentEntry.id}`}
+            className="flashcard-card-shell flashcard-depth flashcard-drag-surface absolute inset-x-0 top-0 select-none rounded-2xl bg-card"
+            data-interaction-phase={interactionPhase}
+            data-flipped={flipped}
+            style={{ transform: `translate3d(${dragX}px, 0, 0) rotateY(${flipped ? 180 : 0}deg)` }}
+            onTransitionEnd={handleCardTransitionEnd}
+            onDragStart={(event) => event.preventDefault()}
           >
-            <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{visibleLabel}</span>
-            <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{visibleText}</span>
-            <span className="text-base text-muted-foreground">Click or press Space to flip</span>
-          </button>
-        </CardContent>
-      </Card>
+            {renderFace(frontLabel, frontText, false)}
+            {renderFace(backLabel, backText, true)}
+          </div>
+          {previewEntry && previewLabel && previewText && previewDirection && (
+            <div
+              key={`preview-${previewEntry.id}`}
+              aria-hidden="true"
+              className="flashcard-card-shell flashcard-depth flashcard-drag-surface pointer-events-none absolute inset-x-0 top-0 flex select-none flex-col items-center justify-center gap-5 rounded-2xl bg-card px-6 py-10 text-center sm:px-16 sm:py-12"
+              data-interaction-phase={interactionPhase}
+              style={{ transform: `translate3d(${previewX}px, 0, 0)` }}
+              onTransitionEnd={handleCardTransitionEnd}
+            >
+              <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{previewLabel}</span>
+              <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{previewText}</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center justify-between gap-3 sm:justify-start">
-          <Button type="button" variant="secondary" disabled={currentIndex === 0} onClick={() => moveTo(currentIndex - 1)}>
+          <Button type="button" variant="secondary" disabled={currentIndex === 0 || interactionPhase !== 'idle'} onClick={() => startSwipe('previous')}>
             <ChevronLeft aria-hidden="true" data-icon="inline-start" /> Previous
           </Button>
-          <Button type="button" variant="secondary" disabled={currentIndex === orderedEntries.length - 1} onClick={() => moveTo(currentIndex + 1)}>
+          <Button type="button" variant="secondary" disabled={currentIndex === orderedEntries.length - 1 || interactionPhase !== 'idle'} onClick={() => startSwipe('next')}>
             Next <ChevronRight aria-hidden="true" data-icon="inline-end" />
           </Button>
         </div>
-        <div className="flex items-center justify-between gap-4 sm:justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
           <p className="text-base font-medium text-muted-foreground" aria-live="polite">Card {currentIndex + 1} of {orderedEntries.length}</p>
-          <Button type="button" variant="ghost" onClick={shuffleCards}>
+          <Button type="button" variant="ghost" disabled={interactionPhase !== 'idle'} onClick={shuffleCards}>
             <Shuffle aria-hidden="true" data-icon="inline-start" /> Shuffle
           </Button>
-          <Button type="button" variant="ghost" onClick={() => setFlipped((current) => !current)}>
+          <Button type="button" variant="ghost" disabled={interactionPhase !== 'idle'} onClick={flipCard}>
             <RotateCcw aria-hidden="true" data-icon="inline-start" /> Flip
           </Button>
         </div>
@@ -778,18 +1108,18 @@ export function CategoryDetailPage() {
   const topics = useMemo(() => filterAndSortTopics(data, categoryId, search, sort), [categoryId, data, search, sort])
 
   useEffect(() => {
-    if (category && openedCategoryId.current !== category.id) {
-      openedCategoryId.current = category.id
-      openCategory(category.id)
-    }
-  }, [category, openCategory])
-
-  useEffect(() => {
     if (searchParams.get('action') !== 'create') return
     setEditingTopic(null)
     setFormOpen(true)
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (category && openedCategoryId.current !== category.id) {
+      openedCategoryId.current = category.id
+      openCategory(category.id)
+    }
+  }, [category, openCategory])
 
   if (!category) return <NotFoundPage />
 
@@ -878,6 +1208,7 @@ export function TopicStudyPage() {
   const [visibilityTopicId, setVisibilityTopicId] = useState(topicId)
   const topicEntryIdsRef = useRef(topicEntryIds)
   const studySettingsRef = useRef(data.settings)
+  const previousEntryIdsRef = useRef(new Set(topicEntryIds))
   const entries = useMemo(() => filterAndSortEntries(data, topicId, search, sort), [data, search, sort, topicId])
 
   topicEntryIdsRef.current = topicEntryIds
@@ -896,6 +1227,20 @@ export function TopicStudyPage() {
     setHiddenLeft(studySettingsRef.current.showQuestionsByDefault ? new Set() : new Set(topicEntryIdsRef.current))
     setHiddenRight(studySettingsRef.current.showAnswersByDefault ? new Set() : new Set(topicEntryIdsRef.current))
   }, [topicId])
+
+  useEffect(() => {
+    const previousEntryIds = previousEntryIdsRef.current
+
+    setHiddenLeft((current) => new Set([...current].filter((entryId) => topicEntryIds.includes(entryId))))
+    setHiddenRight((current) => {
+      const next = new Set([...current].filter((entryId) => topicEntryIds.includes(entryId)))
+      topicEntryIds.forEach((entryId) => {
+        if (!previousEntryIds.has(entryId)) next.add(entryId)
+      })
+      return next
+    })
+    previousEntryIdsRef.current = new Set(topicEntryIds)
+  }, [topicEntryIds])
 
   useEffect(() => {
     if (searchParams.get('action') !== 'create') return
@@ -1002,8 +1347,6 @@ export function TopicStudyPage() {
           <FlashcardMode
             entries={entries}
             frontByEntryType={data.settings.flashcardFrontByEntryType}
-            onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
-            onDelete={setDeletingEntry}
           />
         )}
       </div>
@@ -1034,12 +1377,27 @@ export function TopicStudyPage() {
 
 export function SettingsPage() {
   const { data, updateSettings } = useStudyData()
-  const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveToast, setSaveToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
+  const [isToastExiting, setIsToastExiting] = useState(false)
   const settings = data.settings
+
+  useEffect(() => {
+    if (!saveToast) return
+
+    setIsToastExiting(false)
+    const exitTimeoutId = window.setTimeout(() => setIsToastExiting(true), 2200)
+    const removeTimeoutId = window.setTimeout(() => setSaveToast(null), 2400)
+    return () => {
+      window.clearTimeout(exitTimeoutId)
+      window.clearTimeout(removeTimeoutId)
+    }
+  }, [saveToast])
 
   function savePreferences(patch: Parameters<typeof updateSettings>[0], message = 'Preference saved locally.') {
     const saved = updateSettings(patch)
-    setSaveMessage(saved ? message : 'This preference could not be saved. Check local storage availability and try again.')
+    setSaveToast(saved
+      ? { kind: 'success', message }
+      : { kind: 'error', message: 'This preference could not be saved. Check local storage availability and try again.' })
   }
 
   function restoreDefaults() {
@@ -1066,7 +1424,20 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      {saveMessage && <p className="mt-5 text-base text-muted-foreground" role="status" aria-live="polite">{saveMessage}</p>}
+      {saveToast && (
+        <div className="pointer-events-none fixed inset-x-4 bottom-8 z-50 flex justify-start sm:inset-x-auto sm:left-6" aria-live="polite">
+          <p
+            className={cn(
+              'flex max-w-full items-center gap-2 rounded-xl border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-xl',
+              isToastExiting ? 'animate-out fade-out slide-out-to-bottom-2 duration-200' : 'animate-in fade-in slide-in-from-bottom-2 duration-200',
+            )}
+            role={saveToast.kind === 'error' ? 'alert' : 'status'}
+          >
+            {saveToast.kind === 'success' && <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-accent-foreground" />}
+            <span>{saveToast.message}</span>
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex flex-col gap-5">
         <Card className="bg-card/80">
@@ -1105,22 +1476,33 @@ export function SettingsPage() {
         <Card className="bg-card/80">
           <CardHeader className="p-6 pb-4">
             <SectionLabel>Study sessions</SectionLabel>
-            <CardTitle className="mt-2 text-2xl">Set your starting view</CardTitle>
-            <CardDescription className="leading-relaxed">These preferences apply when opening a new topic study session. You can still change the current session as you study.</CardDescription>
+            <CardTitle className="mt-2 text-2xl">Default Study Mode</CardTitle>
+            <CardDescription className="leading-relaxed">Choose how new topic study sessions begin.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <Field className="flex-col items-start gap-3">
+              <FieldContent>
+                <FieldTitle>Study mode</FieldTitle>
+              </FieldContent>
+              <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
+                const nextMode = value[0]
+                if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
+              }} aria-label="Default study mode" className="w-full sm:w-fit">
+                <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
+                <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>List Mode</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Set your list visibility</CardTitle>
+            <CardDescription className="leading-relaxed">Choose which sides are visible when a new list study session opens.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <FieldGroup>
-              <Field>
-                <FieldLabel>Default study mode</FieldLabel>
-                <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
-                  const nextMode = value[0]
-                  if (nextMode === 'list' || nextMode === 'flashcard') savePreferences({ defaultStudyMode: nextMode })
-                }} aria-label="Default study mode" className="w-full sm:w-fit">
-                  <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
-                  <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
-                </ToggleGroup>
-              </Field>
-
               <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
                 <FieldContent>
                   <FieldTitle>Show questions and terms by default</FieldTitle>
@@ -1165,18 +1547,21 @@ export function SettingsPage() {
         </Card>
 
         <Card className="bg-card/80">
-          <CardHeader className="p-6 pb-4">
-            <div>
+          <CardHeader className="flex flex-col gap-4 p-6 pb-4 sm:grid sm:gap-1">
+            <div className="min-w-0">
               <SectionLabel>Flashcards</SectionLabel>
               <CardTitle className="mt-2 text-2xl">Choose the first side</CardTitle>
-              <CardDescription className="mt-2 leading-relaxed">Each entry type has an independent front-side preference. The opposite side remains available after flipping.</CardDescription>
+              <CardDescription className="mt-2 leading-relaxed">Each entry type has a front-side preference. The opposite side remains available after flipping.</CardDescription>
             </div>
+            <CardAction className="self-start justify-self-auto sm:self-center sm:justify-self-end sm:translate-y-1">
+              <Button type="button" variant="secondary" size="sm" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
+            </CardAction>
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <FieldGroup>
               <Field>
                 <FieldLabel>Question &amp; Answer</FieldLabel>
-                <FieldDescription>Default: Question first.</FieldDescription>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['question-answer'], 'Question', 'Answer')}</FieldDescription>
                 <ToggleGroup value={[settings.flashcardFrontByEntryType['question-answer']]} onValueChange={(value) => {
                   const nextSide = value[0]
                   if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'question-answer': nextSide } })
@@ -1187,7 +1572,7 @@ export function SettingsPage() {
               </Field>
               <Field>
                 <FieldLabel>Term &amp; Definition</FieldLabel>
-                <FieldDescription>Default: Definition first.</FieldDescription>
+                <FieldDescription>{getFlashcardDefaultDescription(settings.flashcardFrontByEntryType['term-definition'], 'Term', 'Definition')}</FieldDescription>
                 <ToggleGroup value={[settings.flashcardFrontByEntryType['term-definition']]} onValueChange={(value) => {
                   const nextSide = value[0]
                   if (nextSide === 'left' || nextSide === 'right') savePreferences({ flashcardFrontByEntryType: { 'term-definition': nextSide } })
@@ -1197,7 +1582,6 @@ export function SettingsPage() {
                 </ToggleGroup>
               </Field>
             </FieldGroup>
-            <Button type="button" variant="secondary" size="sm" className="mt-5" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
           </CardContent>
         </Card>
 

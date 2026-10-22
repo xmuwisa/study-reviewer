@@ -1,3 +1,7 @@
+# Local project instructions and planning documents
+AGENTS.md
+docs/
+
 # Dependencies
 node_modules/
 .pnp/

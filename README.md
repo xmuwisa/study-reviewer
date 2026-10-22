@@ -1,48 +1,57 @@
 # Study Reviewer
 
-Study Reviewer is a personal, local-first web application for studying
-questions, terms, answers, and explanations.
+Study Reviewer is a calm, local-first web application for organizing and
+reviewing questions, terms, answers, and explanations. It is designed for
+focused study without accounts, advertising, recommendations, or cloud-
+dependent data storage.
 
-## Planned features
+## Current application
 
-- Add, edit, and delete study entries
-- Organize entries into categories
-- View questions and answers in two columns
-- Study entries in List Mode or Flashcard Mode
-- Reveal or hide either study column or individual answers
-- Search entries and filter by category
-- Persist study data locally
-- Import and export data as JSON
+Study Reviewer currently provides:
 
-## Intended technology
+- A dashboard with live category, topic, entry, focus-session, and focus-time
+  summaries
+- Recent category and topic activity with direct links back into the library
+- Context-aware creation controls for categories, topics, and entries
+- Category and topic management with search, sorting, counts, and safe deletion
+- Question & Answer and Term & Definition entries with local persistence
+- List Study Mode with column visibility, reveal controls, editing, and deletion
+- Flashcard Study Mode with type-aware fronts, 3D flipping, keyboard controls,
+  sliding navigation, swipe gestures, and session-only shuffle
+- Settings for light, dark, and system themes, study defaults, flashcard
+  orientation, entry-field copy/paste, spellcheck, and Pomodoro preferences
+- Responsive navigation, breadcrumbs, visible focus states, and a persistent
+  Pomodoro timer
 
-React, TypeScript, Vite, Tailwind CSS, `localStorage`, Vitest, and Playwright.
-The project uses Bun for package management and local development commands.
+Study data remains in the current browser and device through `localStorage`; no
+backend, account, cloud sync, remote API, remote font, or network-loaded core
+asset is required. Backup and restore, exports, and offline installation remain
+planned improvements.
 
-## Project status
+## Technology
 
-The Phase 1 application foundation through Phase 7 Settings and Preferences
-are merged into `main`. Phase 8 Persistent Pomodoro Timer is implemented on
-`feat/pomodoro-timer` and ready for review. Testing infrastructure and test
-coverage remain intentionally deferred until explicitly requested.
-
-The product and implementation roadmap are documented in:
-
-- [Project plan](docs/PROJECT.md)
-- [Feature specifications](docs/FEATURES.md)
-- [Development phases](docs/DEVELOPMENT_PHASES.md)
+The project uses React, TypeScript, Vite, Tailwind CSS, shadcn/ui primitives,
+and Bun for package management and local development. Vitest and Playwright
+remain planned validation technologies and will be introduced when testing
+work is explicitly requested.
 
 ## Local development
+
+Prerequisite: [Bun](https://bun.sh/).
 
 ```sh
 bun install
 bun run dev
 ```
 
-The current implementation provides category, topic, and question-and-answer
-entry creation, editing, deletion, Question & Answer and Term & Definition
-types, navigation, search, sorting, List Study Mode, Flashcard Study Mode,
-column and answer visibility controls, dashboard statistics, recent activity,
-context-aware creation navigation, local persistence, Settings preferences,
-and the persistent Pomodoro timer. Data management and export workflows remain
-planned for later phases.
+The available validation commands are:
+
+```sh
+bun run typecheck
+bun run lint
+bun run build
+```
+
+Study Reviewer keeps personal study data in the browser where it is created.
+JSON backup and restore will provide a portable way to preserve local study
+materials as the library features are added.

@@ -147,6 +147,71 @@ a {
   }
 }
 
+.flashcard-stage {
+  min-height: calc(16rem + 1.5rem);
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+.flashcard-carousel-viewport {
+  overflow: visible;
+  background: transparent;
+}
+
+.flashcard-card-shell {
+  bottom: 1.5rem;
+  transform-style: preserve-3d;
+}
+
+@media (min-width: 640px) {
+  .flashcard-stage {
+    min-height: calc(20rem + 1.5rem);
+  }
+}
+
+.flashcard-drag-surface {
+  cursor: grab;
+  transform-style: preserve-3d;
+  transform-origin: center;
+  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.flashcard-drag-surface[data-interaction-phase="dragging"] {
+  cursor: grabbing;
+  transition: none;
+}
+
+.flashcard-drag-surface[data-interaction-phase="flipping"] {
+  transition: transform 750ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flashcard-drag-surface[data-interaction-phase="returning"],
+.flashcard-drag-surface[data-interaction-phase="navigating"] {
+  transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.flashcard-depth {
+  box-shadow:
+    0 1px 0 rgba(148, 163, 184, 0.32),
+    0 3px 0 rgba(148, 163, 184, 0.14),
+    0 18px 30px -20px rgba(15, 23, 42, 0.48);
+}
+
+.flashcard-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.flashcard-face-front {
+  transform: rotateY(0deg) translateZ(1px);
+}
+
+.flashcard-face-back {
+  transform: rotateY(180deg) translateZ(1px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -155,5 +220,10 @@ a {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .flashcard-drag-surface {
+    animation: none;
+    transition: none;
   }
 }
