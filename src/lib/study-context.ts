@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-import type { CategoryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
 
 export type StorageNotice = {
   kind: 'warning' | 'error'
@@ -17,6 +17,9 @@ export type StudyContextValue = {
   createTopic: (categoryId: RecordId, input: TopicInput) => boolean
   updateTopic: (topicId: RecordId, input: TopicInput) => boolean
   deleteTopic: (topicId: RecordId) => boolean
+  createEntry: (topicId: RecordId, input: EntryInput) => boolean
+  updateEntry: (entryId: RecordId, input: EntryInput) => boolean
+  deleteEntry: (entryId: RecordId) => boolean
   openCategory: (categoryId: RecordId) => boolean
   openTopic: (topicId: RecordId) => boolean
 }

@@ -1,10 +1,12 @@
 import { ChevronRight, X } from 'lucide-react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation, useParams } from 'react-router-dom'
 
 import { getPageTitle, productMark } from '@/app/routes'
-import { PrimaryNav } from '@/components/navigation/PrimaryNav'
+import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
 import { PomodoroPlaceholder } from '@/components/pomodoro/PomodoroPlaceholder'
 import { Button } from '@/components/ui/button'
+import { findCategory, findTopic, type StudyData } from '@/lib/study-data'
+import type { StorageNotice } from '@/lib/study-context'
 import { useStudyData } from '@/lib/use-study-data'
 
 function Brand() {
@@ -24,9 +26,16 @@ function Brand() {
   )
 }
 
-function Breadcrumbs({ pathname }: { pathname: string }) {
+function Breadcrumbs({ pathname, data }: { pathname: string; data: StudyData }) {
   const title = getPageTitle(pathname)
-  const isNested = title === 'Category detail' || title === 'Topic study'
+  const { categoryId = '', topicId = '' } = useParams()
+  const category = findCategory(data, categoryId)
+  const topic = findTopic(data, topicId)
+  const isTopicStudy = Boolean(category && topic && topic.categoryId === category.id)
+  const isCategoryDetail = Boolean(category && pathname.startsWith('/categories/'))
+  const categoryName = category?.name ?? title
+  const categoryHref = category ? `/categories/${category.id}` : '/categories'
+  const topicName = topic?.name ?? title
 
   return (
     <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-base">
@@ -34,21 +43,40 @@ function Breadcrumbs({ pathname }: { pathname: string }) {
         Home
       </Link>
       <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground/50" />
-      {isNested && (
+      {title === 'Dashboard' ? (
+        <span aria-current="page" className="font-medium text-primary">Dashboard</span>
+      ) : (
         <>
-          <Link className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to="/categories">
-            Categories
-          </Link>
-          <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground/50" />
+          {isTopicStudy ? (
+            <>
+              <Link className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to="/categories">
+                Categories
+              </Link>
+              <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground/50" />
+              <Link className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to={categoryHref}>
+                {categoryName}
+              </Link>
+              <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground/50" />
+              <span aria-current="page" className="font-medium text-primary">{topicName}</span>
+            </>
+          ) : isCategoryDetail ? (
+            <>
+              <Link className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" to="/categories">
+                Categories
+              </Link>
+              <ChevronRight aria-hidden="true" className="size-4 text-muted-foreground/50" />
+              <span aria-current="page" className="font-medium text-primary">{categoryName}</span>
+            </>
+          ) : (
+            <span aria-current="page" className="font-medium text-primary">{title}</span>
+          )}
         </>
       )}
-      <span aria-current="page" className="font-medium text-primary">{title}</span>
     </nav>
   )
 }
 
-function StorageNotice() {
-  const { storageNotice, clearStorageNotice } = useStudyData()
+function StorageNotice({ storageNotice, clearStorageNotice }: { storageNotice: StorageNotice | null; clearStorageNotice: () => void }) {
   if (!storageNotice) return null
 
   return (
@@ -67,6 +95,7 @@ function StorageNotice() {
 
 export function AppShell() {
   const { pathname } = useLocation()
+  const { data, storageNotice, clearStorageNotice } = useStudyData()
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -79,10 +108,15 @@ export function AppShell() {
 
       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 sm:px-7 lg:px-10">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 py-3 sm:flex-nowrap sm:py-4">
+          <div className="flex items-center justify-between gap-6 py-3 sm:py-4">
             <Brand />
-            <div className="min-w-0 flex-1 overflow-x-auto sm:justify-end sm:flex">
-              <PrimaryNav />
+            <div className="flex min-w-0 flex-1 justify-end">
+              <div className="hidden sm:block">
+                <PrimaryNav />
+              </div>
+              <div className="sm:hidden">
+                <MobileNav />
+              </div>
             </div>
           </div>
         </div>
@@ -90,8 +124,8 @@ export function AppShell() {
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-6xl px-4 pt-8 pb-12 outline-none sm:px-7 sm:py-10 lg:px-10 lg:py-14 lg:pb-16">
         <div className="mb-6">
-          <Breadcrumbs pathname={pathname} />
-          <StorageNotice />
+          <Breadcrumbs pathname={pathname} data={data} />
+          <StorageNotice storageNotice={storageNotice} clearStorageNotice={clearStorageNotice} />
         </div>
         <Outlet />
         <div className="mt-8 flex justify-end">

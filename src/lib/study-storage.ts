@@ -1,5 +1,6 @@
 import {
   createEmptyStudyData,
+  LEGACY_STUDY_DATA_STORAGE_KEYS,
   STUDY_DATA_STORAGE_KEY,
   type StudyData,
 } from '@/lib/study-data'
@@ -46,8 +47,18 @@ export function loadStudyData(storage: StorageAdapter | null = getLocalStorageAd
   }
 
   let rawValue: string | null
+  let sourceStorageKey = STUDY_DATA_STORAGE_KEY
   try {
     rawValue = storage.getItem(STUDY_DATA_STORAGE_KEY)
+    if (rawValue === null) {
+      for (const legacyStorageKey of LEGACY_STUDY_DATA_STORAGE_KEYS) {
+        rawValue = storage.getItem(legacyStorageKey)
+        if (rawValue !== null) {
+          sourceStorageKey = legacyStorageKey
+          break
+        }
+      }
+    }
   } catch {
     return { status: 'unavailable', data: emptyData, message: 'Local storage could not be read.' }
   }
@@ -71,6 +82,17 @@ export function loadStudyData(storage: StorageAdapter | null = getLocalStorageAd
       data: emptyData,
       message: 'Stored study data failed validation.',
       issues: validation.issues,
+    }
+  }
+
+  if (sourceStorageKey !== STUDY_DATA_STORAGE_KEY) {
+    const migrationSave = saveStudyData(validation.data, storage)
+    if (!migrationSave.ok) {
+      return {
+        status: 'unavailable',
+        data: validation.data,
+        message: 'Stored study data was migrated for this version but could not be saved locally.',
+      }
     }
   }
 
