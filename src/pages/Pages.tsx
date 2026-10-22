@@ -278,13 +278,9 @@ type FlashcardInteractionPhase = 'idle' | 'dragging' | 'flipping' | 'returning' 
 function FlashcardMode({
   entries,
   frontByEntryType,
-  onEdit,
-  onDelete,
 }: {
   entries: Entry[]
   frontByEntryType: Record<Entry['type'], FlashcardFrontSide>
-  onEdit: (entry: Entry) => void
-  onDelete: (entry: Entry) => void
 }) {
   const entryIds = useMemo(() => entries.map((entry) => entry.id), [entries])
   const entryIdentity = entryIds.join('|')
@@ -671,50 +667,41 @@ function FlashcardMode({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative">
-        <div
-          className="absolute top-3 right-3 z-10"
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <EntryActions entry={currentEntry} onEdit={() => onEdit(currentEntry)} onDelete={() => onDelete(currentEntry)} />
-        </div>
-        <div
-          ref={carouselStageRef}
-          className="flashcard-stage relative min-h-64 touch-pan-y sm:min-h-80"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerCancel}
-          onClick={handleCardClick}
-        >
-          <div className="flashcard-carousel-viewport absolute inset-0">
-            <div
-              key={`current-${currentEntry.id}`}
-              className="flashcard-card-shell flashcard-depth flashcard-drag-surface absolute inset-x-0 top-0 select-none rounded-2xl bg-card"
-              data-interaction-phase={interactionPhase}
-              data-flipped={flipped}
-              style={{ transform: `translate3d(${dragX}px, 0, 0) rotateY(${flipped ? 180 : 0}deg)` }}
-              onTransitionEnd={handleCardTransitionEnd}
-              onDragStart={(event) => event.preventDefault()}
-            >
-              {renderFace(frontLabel, frontText, false)}
-              {renderFace(backLabel, backText, true)}
-            </div>
-            {previewEntry && previewLabel && previewText && previewDirection && (
-              <div
-                key={`preview-${previewEntry.id}`}
-                aria-hidden="true"
-                className="flashcard-card-shell flashcard-depth flashcard-drag-surface pointer-events-none absolute inset-x-0 top-0 flex select-none flex-col items-center justify-center gap-5 rounded-2xl bg-card px-6 py-10 text-center sm:px-16 sm:py-12"
-                data-interaction-phase={interactionPhase}
-                style={{ transform: `translate3d(${previewX}px, 0, 0)` }}
-                onTransitionEnd={handleCardTransitionEnd}
-              >
-                <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{previewLabel}</span>
-                <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{previewText}</span>
-              </div>
-            )}
+      <div
+        ref={carouselStageRef}
+        className="flashcard-stage relative min-h-64 touch-pan-y sm:min-h-80"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerCancel}
+        onClick={handleCardClick}
+      >
+        <div className="flashcard-carousel-viewport absolute inset-0">
+          <div
+            key={`current-${currentEntry.id}`}
+            className="flashcard-card-shell flashcard-depth flashcard-drag-surface absolute inset-x-0 top-0 select-none rounded-2xl bg-card"
+            data-interaction-phase={interactionPhase}
+            data-flipped={flipped}
+            style={{ transform: `translate3d(${dragX}px, 0, 0) rotateY(${flipped ? 180 : 0}deg)` }}
+            onTransitionEnd={handleCardTransitionEnd}
+            onDragStart={(event) => event.preventDefault()}
+          >
+            {renderFace(frontLabel, frontText, false)}
+            {renderFace(backLabel, backText, true)}
           </div>
+          {previewEntry && previewLabel && previewText && previewDirection && (
+            <div
+              key={`preview-${previewEntry.id}`}
+              aria-hidden="true"
+              className="flashcard-card-shell flashcard-depth flashcard-drag-surface pointer-events-none absolute inset-x-0 top-0 flex select-none flex-col items-center justify-center gap-5 rounded-2xl bg-card px-6 py-10 text-center sm:px-16 sm:py-12"
+              data-interaction-phase={interactionPhase}
+              style={{ transform: `translate3d(${previewX}px, 0, 0)` }}
+              onTransitionEnd={handleCardTransitionEnd}
+            >
+              <span className="text-base font-semibold uppercase tracking-[0.16em] text-primary">{previewLabel}</span>
+              <span className="max-w-3xl whitespace-pre-wrap text-2xl font-semibold leading-tight text-foreground sm:text-4xl">{previewText}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1229,8 +1216,6 @@ export function TopicStudyPage() {
           <FlashcardMode
             entries={entries}
             frontByEntryType={data.settings.flashcardFrontByEntryType}
-            onEdit={(entry) => { setEditingEntry(entry); setFormOpen(true) }}
-            onDelete={setDeletingEntry}
           />
         )}
       </div>
