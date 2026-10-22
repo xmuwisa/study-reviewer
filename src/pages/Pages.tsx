@@ -1442,7 +1442,7 @@ export function SettingsPage() {
 
         <Card className="bg-card/80">
           <CardHeader className="p-6 pb-4">
-            <SectionLabel>Study sessions</SectionLabel>
+            <SectionLabel>Default Study Mode</SectionLabel>
             <CardTitle className="mt-2 text-2xl">Set your starting view</CardTitle>
             <CardDescription className="leading-relaxed">These preferences apply when opening a new topic study session. You can still change the current session as you study.</CardDescription>
           </CardHeader>
@@ -1457,26 +1457,6 @@ export function SettingsPage() {
                   <ToggleGroupItem value="list" className="flex-1 sm:flex-none">List</ToggleGroupItem>
                   <ToggleGroupItem value="flashcard" className="flex-1 sm:flex-none">Flashcards</ToggleGroupItem>
                 </ToggleGroup>
-              </Field>
-
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Show questions and terms by default</FieldTitle>
-                  <FieldDescription>New list sessions open with the left column visible.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.showQuestionsByDefault} onPressedChange={(pressed) => savePreferences({ showQuestionsByDefault: pressed })} aria-label="Show questions and terms by default" size="sm">
-                  {settings.showQuestionsByDefault ? 'On' : 'Off'}
-                </Toggle>
-              </Field>
-
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Show answers and definitions by default</FieldTitle>
-                  <FieldDescription>New list sessions open with the right column visible.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.showAnswersByDefault} onPressedChange={(pressed) => savePreferences({ showAnswersByDefault: pressed })} aria-label="Show answers and definitions by default" size="sm">
-                  {settings.showAnswersByDefault ? 'On' : 'Off'}
-                </Toggle>
               </Field>
 
               <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
@@ -1496,6 +1476,37 @@ export function SettingsPage() {
                 </FieldContent>
                 <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
                   {settings.spellcheck ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>List Mode</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Set your list visibility</CardTitle>
+            <CardDescription className="leading-relaxed">Choose which sides are visible when a new list study session opens.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FieldGroup>
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Show questions and terms by default</FieldTitle>
+                  <FieldDescription>New list sessions open with the left column visible.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.showQuestionsByDefault} onPressedChange={(pressed) => savePreferences({ showQuestionsByDefault: pressed })} aria-label="Show questions and terms by default" size="sm">
+                  {settings.showQuestionsByDefault ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Show answers and definitions by default</FieldTitle>
+                  <FieldDescription>New list sessions open with the right column visible.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.showAnswersByDefault} onPressedChange={(pressed) => savePreferences({ showAnswersByDefault: pressed })} aria-label="Show answers and definitions by default" size="sm">
+                  {settings.showAnswersByDefault ? 'On' : 'Off'}
                 </Toggle>
               </Field>
             </FieldGroup>
