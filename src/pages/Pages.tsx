@@ -1448,7 +1448,7 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="p-6 pt-0">
             <Field className="flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
-              <FieldContent className="flex-none">
+              <FieldContent>
                 <FieldTitle>Study mode</FieldTitle>
               </FieldContent>
               <ToggleGroup value={[settings.defaultStudyMode]} onValueChange={(value) => {
