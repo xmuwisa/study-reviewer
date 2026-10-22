@@ -27,8 +27,8 @@ export function PomodoroPlaceholder() {
                 Soon
               </Badge>
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              A focused timer will be added as the study workspace grows.
+            <p className="mt-1 text-base leading-relaxed text-muted-foreground">
+              A focused timer is planned for a later update.
             </p>
           </div>
           <Clock3 aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
