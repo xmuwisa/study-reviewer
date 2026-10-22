@@ -1,0 +1,235 @@
+export const STUDY_DATA_SCHEMA_VERSION = 1 as const
+export const STUDY_DATA_STORAGE_KEY = `study-reviewer:data:v${STUDY_DATA_SCHEMA_VERSION}`
+
+export type RecordId = string
+export type Timestamp = number
+
+export type ThemePreference = 'light' | 'dark' | 'system'
+export type StudyMode = 'list' | 'flashcard'
+export type PomodoroMode = 'focus' | 'short-break' | 'long-break'
+export type PomodoroSessionStatus = 'running' | 'paused' | 'completed' | 'reset'
+
+export type Category = {
+  id: RecordId
+  name: string
+  description: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  lastAccessedAt: Timestamp | null
+}
+
+export type Topic = {
+  id: RecordId
+  categoryId: RecordId
+  name: string
+  description: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  lastAccessedAt: Timestamp | null
+}
+
+export type Entry = {
+  id: RecordId
+  topicId: RecordId
+  question: string
+  answer: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export type PomodoroPreferences = {
+  focusMinutes: number
+  shortBreakMinutes: number
+  longBreakMinutes: number
+  sessionsBeforeLongBreak: number
+  autoSwitch: boolean
+  autoStart: boolean
+  soundEnabled: boolean
+  notificationsEnabled: boolean
+}
+
+export type StudySettings = {
+  theme: ThemePreference
+  defaultStudyMode: StudyMode
+  showQuestionsByDefault: boolean
+  showAnswersByDefault: boolean
+  allowCopyPaste: boolean
+  spellcheck: boolean
+  pomodoro: PomodoroPreferences
+}
+
+export type RecentActivity = {
+  type: 'category' | 'topic'
+  recordId: RecordId
+  accessedAt: Timestamp
+}
+
+export type ActivityState = {
+  recentlyAccessed: RecentActivity[]
+  completedFocusSessions: number
+  completedFocusMinutes: number
+}
+
+export type PomodoroSession = {
+  mode: PomodoroMode
+  durationMinutes: number
+  status: PomodoroSessionStatus
+  startedAt: Timestamp
+  endsAt: Timestamp | null
+  pausedAt: Timestamp | null
+  completedAt: Timestamp | null
+}
+
+export type TimerState = {
+  activeSession: PomodoroSession | null
+  focusCycleCount: number
+}
+
+export type StudyData = {
+  schemaVersion: typeof STUDY_DATA_SCHEMA_VERSION
+  categories: Category[]
+  topics: Topic[]
+  entries: Entry[]
+  settings: StudySettings
+  activity: ActivityState
+  timer: TimerState
+}
+
+export type CategoryInput = {
+  name: string
+  description?: string
+}
+
+export type TopicInput = CategoryInput
+
+export type EntryInput = {
+  question: string
+  answer: string
+}
+
+export function createStableId(): RecordId {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  const randomPart = Math.random().toString(36).slice(2, 10)
+  return `${Date.now().toString(36)}-${randomPart}`
+}
+
+export function createDefaultSettings(): StudySettings {
+  return {
+    theme: 'system',
+    defaultStudyMode: 'list',
+    showQuestionsByDefault: true,
+    showAnswersByDefault: false,
+    allowCopyPaste: true,
+    spellcheck: true,
+    pomodoro: {
+      focusMinutes: 25,
+      shortBreakMinutes: 5,
+      longBreakMinutes: 15,
+      sessionsBeforeLongBreak: 4,
+      autoSwitch: true,
+      autoStart: false,
+      soundEnabled: false,
+      notificationsEnabled: false,
+    },
+  }
+}
+
+export function createEmptyStudyData(): StudyData {
+  return {
+    schemaVersion: STUDY_DATA_SCHEMA_VERSION,
+    categories: [],
+    topics: [],
+    entries: [],
+    settings: createDefaultSettings(),
+    activity: {
+      recentlyAccessed: [],
+      completedFocusSessions: 0,
+      completedFocusMinutes: 0,
+    },
+    timer: {
+      activeSession: null,
+      focusCycleCount: 0,
+    },
+  }
+}
+
+export function createCategoryRecord(
+  input: CategoryInput,
+  now: Timestamp = Date.now(),
+  id: RecordId = createStableId(),
+): Category {
+  return {
+    id,
+    name: input.name.trim(),
+    description: input.description?.trim() ?? '',
+    createdAt: now,
+    updatedAt: now,
+    lastAccessedAt: null,
+  }
+}
+
+export function createTopicRecord(
+  categoryId: RecordId,
+  input: TopicInput,
+  now: Timestamp = Date.now(),
+  id: RecordId = createStableId(),
+): Topic {
+  return {
+    id,
+    categoryId,
+    name: input.name.trim(),
+    description: input.description?.trim() ?? '',
+    createdAt: now,
+    updatedAt: now,
+    lastAccessedAt: null,
+  }
+}
+
+export function createEntryRecord(
+  topicId: RecordId,
+  input: EntryInput,
+  now: Timestamp = Date.now(),
+  id: RecordId = createStableId(),
+): Entry {
+  return {
+    id,
+    topicId,
+    question: input.question.trim(),
+    answer: input.answer.trim(),
+    createdAt: now,
+    updatedAt: now,
+  }
+}
+
+export function findCategory(data: StudyData, categoryId: RecordId) {
+  return data.categories.find((category) => category.id === categoryId)
+}
+
+export function findTopic(data: StudyData, topicId: RecordId) {
+  return data.topics.find((topic) => topic.id === topicId)
+}
+
+export function findEntry(data: StudyData, entryId: RecordId) {
+  return data.entries.find((entry) => entry.id === entryId)
+}
+
+export function getTopicsForCategory(data: StudyData, categoryId: RecordId) {
+  return data.topics.filter((topic) => topic.categoryId === categoryId)
+}
+
+export function getEntriesForTopic(data: StudyData, topicId: RecordId) {
+  return data.entries.filter((entry) => entry.topicId === topicId)
+}
+
+export function getCategoryForTopic(data: StudyData, topicId: RecordId) {
+  const topic = findTopic(data, topicId)
+  return topic ? findCategory(data, topic.categoryId) : undefined
+}
+
+export function getTopicForEntry(data: StudyData, entryId: RecordId) {
+  const entry = findEntry(data, entryId)
+  return entry ? findTopic(data, entry.topicId) : undefined
+}
