@@ -3,11 +3,14 @@ import {
   ArrowDownAZ,
   ArrowUpRight,
   BookOpenCheck,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   Eye,
   EyeOff,
   FolderPlus,
+  FolderOpen,
   Layers3,
   Pencil,
   Plus,
@@ -19,7 +22,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, KeyboardEvent, MouseEvent, PointerEvent, ReactNode, SetStateAction, TransitionEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialog'
 import { CollectionFormDialog, type CollectionFormValues } from '@/components/study/CollectionFormDialog'
@@ -74,6 +77,50 @@ function FoundationNote() {
       </CardContent>
     </Card>
   )
+}
+
+function formatFocusMinutes(minutes: number) {
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`
+}
+
+function formatActivityDate(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(timestamp)
+}
+
+function DashboardStatCard({
+  label,
+  value,
+  description,
+  icon,
+  to,
+}: {
+  label: string
+  value: string | number
+  description: string
+  icon: ReactNode
+  to?: string
+}) {
+  const card = (
+    <Card className="h-full bg-card/80 transition-colors group-hover:bg-card">
+      <CardHeader className="flex-row items-start justify-between gap-3 p-5 pb-3">
+        <div>
+          <CardDescription>{label}</CardDescription>
+          <CardTitle className="mt-2 text-3xl tracking-tight">{value}</CardTitle>
+        </div>
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+          {icon}
+        </div>
+      </CardHeader>
+      <CardContent className="p-5 pt-0">
+        <p className="text-base leading-relaxed text-muted-foreground">{description}</p>
+      </CardContent>
+    </Card>
+  )
+
+  return to ? <Link to={to} className="group rounded-2xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{card}</Link> : card
 }
 
 function SortSelect({
@@ -858,45 +905,91 @@ function EmptyCollection({
 }
 
 export function DashboardPage() {
+  const { data } = useStudyData()
+  const categoryById = useMemo(() => new Map(data.categories.map((category) => [category.id, category])), [data.categories])
+  const topicById = useMemo(() => new Map(data.topics.map((topic) => [topic.id, topic])), [data.topics])
+  const recentItems = useMemo(() => data.activity.recentlyAccessed.flatMap((activity) => {
+    if (activity.type === 'category') {
+      const category = categoryById.get(activity.recordId)
+      return category ? [{
+        id: activity.recordId,
+        name: category.name,
+        kind: 'Category',
+        detail: category.description || 'Category overview',
+        accessedAt: activity.accessedAt,
+        to: `/categories/${category.id}`,
+      }] : []
+    }
+
+    const topic = topicById.get(activity.recordId)
+    const category = topic ? categoryById.get(topic.categoryId) : undefined
+    return topic && category ? [{
+      id: activity.recordId,
+      name: topic.name,
+      kind: 'Topic',
+      detail: category.name,
+      accessedAt: activity.accessedAt,
+      to: `/categories/${category.id}/topics/${topic.id}`,
+    }] : []
+  }), [categoryById, data.activity.recentlyAccessed, topicById])
+
   return (
     <div className="animate-in fade-in duration-500">
       <PageHeading
-        title="Your study space is ready."
-        description="A calm home for the questions, terms, and explanations you want to keep close. Start small; let the library grow with you."
+        title="Your study space, at a glance."
+        description="See the shape of your local library, return to recent study paths, and keep moving through what you want to remember."
       />
 
-      <div className="mt-9 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
-        <Card className="relative overflow-hidden bg-primary text-primary-foreground">
-          <CardHeader className="relative gap-3 p-6 sm:p-8">
-            <Badge variant="secondary" className="w-fit border-0 bg-primary-foreground/10 text-primary-foreground">Practice with flashcards</Badge>
-            <CardTitle className="max-w-md text-2xl leading-tight text-primary-foreground sm:text-3xl">A softer way to return to what matters.</CardTitle>
-            <CardDescription className="max-w-lg text-base leading-relaxed text-primary-foreground/75">Move from a calm list into focused, one-card-at-a-time review.</CardDescription>
-          </CardHeader>
-          <CardContent className="relative p-6 pt-0 sm:p-8 sm:pt-0">
-            <Button render={<Link to="/categories" />} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 focus-visible:ring-primary-foreground/60" size="lg">
-              Open categories
-              <ArrowUpRight aria-hidden="true" data-icon="inline-end" />
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/80">
-          <CardHeader className="p-6 pb-4">
-            <SectionLabel>What is here now</SectionLabel>
-            <CardTitle className="mt-2 text-xl">A clear starting point</CardTitle>
-            <CardDescription className="leading-relaxed">The core structure is ready without rushing ahead into entry study flows.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-1">
-            <ul className="flex flex-col gap-4 text-base">
-              <li className="flex items-start gap-3"><BookOpenCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent-foreground" /><span>Categories with search, sorting, and safe deletion</span></li>
-              <li className="flex items-start gap-3"><Layers3 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent-foreground" /><span>Topics connected to their parent category</span></li>
-              <li className="flex items-start gap-3"><Sparkles aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-accent-foreground" /><span>Local-first persistence with recent access activity</span></li>
-            </ul>
-          </CardContent>
-        </Card>
+      <div className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <DashboardStatCard label="Categories" value={data.categories.length} description="Organized study areas" icon={<FolderOpen aria-hidden="true" />} to="/categories" />
+        <DashboardStatCard label="Topics" value={data.topics.length} description="Focused paths to revisit" icon={<Layers3 aria-hidden="true" />} to="/categories" />
+        <DashboardStatCard label="Study entries" value={data.entries.length} description="Questions, terms, and answers" icon={<BookOpenCheck aria-hidden="true" />} to="/categories" />
+        <DashboardStatCard label="Focus sessions" value={data.activity.completedFocusSessions} description="Completed Pomodoro sessions" icon={<CheckCircle2 aria-hidden="true" />} />
+        <DashboardStatCard label="Focus time" value={formatFocusMinutes(data.activity.completedFocusMinutes)} description="Recorded completed minutes" icon={<Clock3 aria-hidden="true" />} />
       </div>
 
-      <div className="mt-5"><FoundationNote /></div>
+      <Card className="mt-8 bg-card/80">
+        <CardHeader className="flex-row items-start justify-between gap-4 p-6 pb-4">
+          <div className="min-w-0">
+            <CardDescription>Recent activity</CardDescription>
+            <CardTitle className="mt-2 text-2xl">Return to a familiar path</CardTitle>
+          </div>
+          {recentItems.length > 0 && <Badge variant="secondary">{recentItems.length} recent</Badge>}
+        </CardHeader>
+        <CardContent className="p-6 pt-0">
+          {recentItems.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {recentItems.map((item) => (
+                <Link
+                  key={`${item.kind}-${item.id}`}
+                  to={item.to}
+                  className="group flex min-w-0 items-center justify-between gap-4 rounded-xl bg-background/70 px-4 py-3 transition-colors hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-base font-semibold text-foreground">{item.name}</span>
+                    <span className="mt-1 block truncate text-base text-muted-foreground">{item.kind} · {item.detail}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+                    <span>{formatActivityDate(item.accessedAt)}</span>
+                    <ArrowUpRight aria-hidden="true" className="size-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Empty className="min-h-56 rounded-2xl bg-background/50 p-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Sparkles aria-hidden="true" /></EmptyMedia>
+                <EmptyTitle>No recent study paths yet</EmptyTitle>
+                <EmptyDescription>Open a category or topic and it will appear here for an easy return.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button render={<Link to="/categories" />}>Open categories <ArrowUpRight aria-hidden="true" data-icon="inline-end" /></Button>
+              </EmptyContent>
+            </Empty>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -904,12 +997,20 @@ export function DashboardPage() {
 export function CategoriesPage() {
   const navigate = useNavigate()
   const { data, createCategory, updateCategory, deleteCategory, openCategory } = useStudyData()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<CategorySort>('alphabetical')
   const [formOpen, setFormOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [deletingCategory, setDeletingCategory] = useState<Category | null>(null)
   const categories = useMemo(() => filterAndSortCategories(data, search, sort), [data, search, sort])
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return
+    setEditingCategory(null)
+    setFormOpen(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   function openCategoryPage(categoryId: string) {
     openCategory(categoryId)
@@ -985,6 +1086,7 @@ export function CategoryDetailPage() {
   const { categoryId = '' } = useParams()
   const navigate = useNavigate()
   const { data, createTopic, updateTopic, deleteTopic, openCategory, openTopic } = useStudyData()
+  const [searchParams, setSearchParams] = useSearchParams()
   const category = findCategory(data, categoryId)
   const openedCategoryId = useRef<string | null>(null)
   const [search, setSearch] = useState('')
@@ -993,6 +1095,13 @@ export function CategoryDetailPage() {
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null)
   const [deletingTopic, setDeletingTopic] = useState<Topic | null>(null)
   const topics = useMemo(() => filterAndSortTopics(data, categoryId, search, sort), [categoryId, data, search, sort])
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return
+    setEditingTopic(null)
+    setFormOpen(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     if (category && openedCategoryId.current !== category.id) {
@@ -1072,6 +1181,7 @@ export function CategoryDetailPage() {
 export function TopicStudyPage() {
   const { categoryId = '', topicId = '' } = useParams()
   const { data, createEntry, updateEntry, deleteEntry, openTopic } = useStudyData()
+  const [searchParams, setSearchParams] = useSearchParams()
   const category = findCategory(data, categoryId)
   const topic = findTopic(data, topicId)
   const openedTopicId = useRef<string | null>(null)
@@ -1117,6 +1227,13 @@ export function TopicStudyPage() {
     })
     previousEntryIdsRef.current = new Set(topicEntryIds)
   }, [topicEntryIds])
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return
+    setEditingEntry(null)
+    setFormOpen(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
 
   if (!category || !topic || topic.categoryId !== category.id) return <NotFoundPage />
   const currentTopic = topic

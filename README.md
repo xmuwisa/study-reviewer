@@ -7,20 +7,24 @@ dependent data storage.
 
 ## Current application
 
-The application foundation provides:
+Study Reviewer currently provides:
 
-- A responsive dashboard, categories, category detail, topic study, and
-  settings route structure
-- Keyboard-friendly navigation with visible focus states and breadcrumbs
-- A mobile-aware application shell with touch-sized controls
-- A local-first visual language for future study content
-- A compact placeholder for the planned focus timer
+- A dashboard with live category, topic, entry, focus-session, and focus-time
+  summaries
+- Recent category and topic activity with direct links back into the library
+- Context-aware creation controls for categories, topics, and entries
+- Category and topic management with search, sorting, counts, and safe deletion
+- Question & Answer and Term & Definition entries with local persistence
+- List Study Mode with column visibility, reveal controls, editing, and deletion
+- Flashcard Study Mode with type-aware fronts, 3D flipping, keyboard controls,
+  sliding navigation, swipe gestures, and session-only shuffle
+- Responsive navigation, breadcrumbs, visible focus states, and a compact
+  Pomodoro placeholder
 
-The study library, local persistence, review modes, preferences, exports, and
-offline installation will build on this foundation. Study data is intended to
-remain in the current browser and device through `localStorage`; no backend,
-account, cloud sync, remote API, remote font, or network-loaded core asset is
-required.
+Study data remains in the current browser and device through `localStorage`; no
+backend, account, cloud sync, remote API, remote font, or network-loaded core
+asset is required. Settings preferences, backup and restore, exports, and
+offline installation remain planned improvements.
 
 ## Technology
 
