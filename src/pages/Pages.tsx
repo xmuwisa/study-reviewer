@@ -1489,6 +1489,26 @@ export function SettingsPage() {
                   {settings.showAnswersByDefault ? 'On' : 'Off'}
                 </Toggle>
               </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Allow copy and paste in entry fields</FieldTitle>
+                  <FieldDescription>This only affects editable question, term, answer, and definition fields. It cannot control browser or stored-data copying elsewhere.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.allowCopyPaste} onPressedChange={(pressed) => savePreferences({ allowCopyPaste: pressed })} aria-label="Allow copy and paste in entry fields" size="sm">
+                  {settings.allowCopyPaste ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
+
+              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
+                <FieldContent>
+                  <FieldTitle>Use browser spellcheck</FieldTitle>
+                  <FieldDescription>Spellcheck behavior is provided by your browser and operating system; Study Reviewer does not add offline autocorrection.</FieldDescription>
+                </FieldContent>
+                <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
+                  {settings.spellcheck ? 'On' : 'Off'}
+                </Toggle>
+              </Field>
             </FieldGroup>
           </CardContent>
         </Card>
@@ -1527,37 +1547,6 @@ export function SettingsPage() {
               </Field>
             </FieldGroup>
             <Button type="button" variant="secondary" size="sm" className="mt-5" onClick={restoreFlashcardDefaults}>Restore flashcard defaults</Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/80">
-          <CardHeader className="p-6 pb-4">
-            <SectionLabel>Editing Preferences</SectionLabel>
-            <CardTitle className="mt-2 text-2xl">Keep entry editing comfortable</CardTitle>
-            <CardDescription className="leading-relaxed">Choose how editable study fields interact with browser clipboard and spellcheck behavior.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <FieldGroup>
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Allow copy and paste in entry fields</FieldTitle>
-                  <FieldDescription>This only affects editable question, term, answer, and definition fields. It cannot control browser or stored-data copying elsewhere.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.allowCopyPaste} onPressedChange={(pressed) => savePreferences({ allowCopyPaste: pressed })} aria-label="Allow copy and paste in entry fields" size="sm">
-                  {settings.allowCopyPaste ? 'On' : 'Off'}
-                </Toggle>
-              </Field>
-
-              <Field orientation="horizontal" className="items-start justify-between gap-4 rounded-xl bg-background/60 p-4">
-                <FieldContent>
-                  <FieldTitle>Use browser spellcheck</FieldTitle>
-                  <FieldDescription>Spellcheck behavior is provided by your browser and operating system; Study Reviewer does not add offline autocorrection.</FieldDescription>
-                </FieldContent>
-                <Toggle pressed={settings.spellcheck} onPressedChange={(pressed) => savePreferences({ spellcheck: pressed })} aria-label="Use browser spellcheck" size="sm">
-                  {settings.spellcheck ? 'On' : 'Off'}
-                </Toggle>
-              </Field>
-            </FieldGroup>
           </CardContent>
         </Card>
 
