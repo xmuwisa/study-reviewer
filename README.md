@@ -18,13 +18,15 @@ Study Reviewer currently provides:
 - List Study Mode with column visibility, reveal controls, editing, and deletion
 - Flashcard Study Mode with type-aware fronts, 3D flipping, keyboard controls,
   sliding navigation, swipe gestures, and session-only shuffle
+- Settings for light, dark, and system themes, study defaults, flashcard
+  orientation, entry-field copy/paste, spellcheck, and Pomodoro preferences
 - Responsive navigation, breadcrumbs, visible focus states, and a compact
   Pomodoro placeholder
 
 Study data remains in the current browser and device through `localStorage`; no
 backend, account, cloud sync, remote API, remote font, or network-loaded core
-asset is required. Settings preferences, backup and restore, exports, and
-offline installation remain planned improvements.
+asset is required. Backup and restore, exports, and offline installation remain
+planned improvements, while the functional Pomodoro timer is still to come.
 
 ## Technology
 

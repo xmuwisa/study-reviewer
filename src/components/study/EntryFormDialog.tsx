@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ClipboardEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -23,6 +23,8 @@ export type EntryFormValues = {
 type EntryFormDialogProps = {
   open: boolean
   initialValues?: EntryFormValues
+  allowCopyPaste?: boolean
+  spellcheck?: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: EntryFormValues) => boolean
 }
@@ -32,6 +34,8 @@ const EMPTY_ENTRY_VALUES: EntryFormValues = { type: 'question-answer', question:
 export function EntryFormDialog({
   open,
   initialValues = EMPTY_ENTRY_VALUES,
+  allowCopyPaste = true,
+  spellcheck = true,
   onOpenChange,
   onSubmit,
 }: EntryFormDialogProps) {
@@ -44,6 +48,10 @@ export function EntryFormDialog({
   const leftLabel = isTermDefinition ? 'Term' : 'Question'
   const rightLabel = isTermDefinition ? 'Definition' : 'Answer'
   const entryTypeLabel = isTermDefinition ? 'term and definition' : 'question and answer'
+
+  function preventClipboardAction(event: ClipboardEvent<HTMLTextAreaElement>) {
+    if (!allowCopyPaste) event.preventDefault()
+  }
 
   useEffect(() => {
     if (open) {
@@ -114,6 +122,10 @@ export function EntryFormDialog({
                 className="border-0 bg-muted/45"
                 aria-invalid={Boolean(questionError)}
                 autoFocus
+                spellCheck={spellcheck}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onPaste={preventClipboardAction}
                 value={values.question}
                 onChange={(event) => setValues((current) => ({ ...current, question: event.target.value }))}
                 placeholder={isTermDefinition ? 'e.g. Spaced repetition' : 'e.g. What is spaced repetition?'}
@@ -128,6 +140,10 @@ export function EntryFormDialog({
                 id="entry-answer"
                 className="border-0 bg-muted/45"
                 aria-invalid={Boolean(answerError)}
+                spellCheck={spellcheck}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onPaste={preventClipboardAction}
                 value={values.answer}
                 onChange={(event) => setValues((current) => ({ ...current, answer: event.target.value }))}
                 placeholder={isTermDefinition ? 'Write the definition you want to remember' : 'Write the explanation you want to remember'}
