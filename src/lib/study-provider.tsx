@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import type { CategoryInput, EntryInput, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { CategoryInput, EntryInput, PomodoroMode, RecordId, StudyData, TopicInput } from '@/lib/study-data'
 import {
   createCategory,
   createEntry,
@@ -12,11 +12,23 @@ import {
   markTopicAccessed,
   updateCategory,
   updateEntry,
-  updateSettings,
   updateTopic,
+  updateSettings,
 } from '@/lib/study-operations'
 import { StudyContext, type StorageNotice, type StudyContextValue } from '@/lib/study-context'
 import { createStudyRepository } from '@/lib/study-storage'
+import {
+  abandonPomodoroSession,
+  adjustPomodoroDuration,
+  completePomodoroSession,
+  pausePomodoro,
+  reconcilePomodoro,
+  resetPomodoro,
+  resumePomodoro,
+  snoozePomodoro,
+  selectPomodoroMode,
+  startPomodoro,
+} from '@/lib/pomodoro'
 
 function getInitialNotice(status: ReturnType<ReturnType<typeof createStudyRepository>['load']>['status'], message?: string) {
   if (status === 'invalid' || status === 'unavailable') {
@@ -92,7 +104,36 @@ export function StudyProvider({ children }: { children: ReactNode }) {
   const openCategory = useCallback((categoryId: RecordId) => commit(markCategoryAccessed(data, categoryId)), [commit, data])
   const openTopic = useCallback((topicId: RecordId) => commit(markTopicAccessed(data, topicId)), [commit, data])
   const updateSettingsAction = useCallback((patch: Parameters<typeof updateSettings>[1]) => commit(updateSettings(data, patch)), [commit, data])
+  const selectPomodoroModeAction = useCallback((mode: PomodoroMode) => commit(selectPomodoroMode(data, mode)), [commit, data])
+  const abandonPomodoroSessionAction = useCallback((mode: PomodoroMode) => commit(abandonPomodoroSession(data, mode)), [commit, data])
+  const startPomodoroAction = useCallback(() => commit(startPomodoro(data, Date.now())), [commit, data])
+  const pausePomodoroAction = useCallback(() => commit(pausePomodoro(data, Date.now())), [commit, data])
+  const resumePomodoroAction = useCallback(() => commit(resumePomodoro(data, Date.now())), [commit, data])
+  const snoozePomodoroAction = useCallback((durationMinutes: number) => commit(snoozePomodoro(data, durationMinutes, Date.now())), [commit, data])
+  const resetPomodoroAction = useCallback(() => commit(resetPomodoro(data)), [commit, data])
+  const completePomodoroSessionAction = useCallback((mode: PomodoroMode, durationMinutes: number) => commit(completePomodoroSession(data, mode, durationMinutes, Date.now())), [commit, data])
+  const adjustPomodoroDurationAction = useCallback((durationMinutes: number) => commit(adjustPomodoroDuration(data, durationMinutes)), [commit, data])
   const clearStorageNotice = useCallback(() => setStorageNotice(null), [])
+
+  useEffect(() => {
+    const reconcile = () => {
+      const nextData = reconcilePomodoro(data, Date.now())
+      if (nextData !== data) commit(nextData)
+    }
+
+    reconcile()
+    const session = data.timer.activeSession
+    if (!session || session.status !== 'running') return
+
+    const intervalId = window.setInterval(reconcile, 1000)
+    window.addEventListener('focus', reconcile)
+    document.addEventListener('visibilitychange', reconcile)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', reconcile)
+      document.removeEventListener('visibilitychange', reconcile)
+    }
+  }, [commit, data])
 
   const value = useMemo<StudyContextValue>(
     () => ({
@@ -111,6 +152,15 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       openCategory,
       openTopic,
       updateSettings: updateSettingsAction,
+      selectPomodoroMode: selectPomodoroModeAction,
+      abandonPomodoroSession: abandonPomodoroSessionAction,
+      startPomodoro: startPomodoroAction,
+      pausePomodoro: pausePomodoroAction,
+      resumePomodoro: resumePomodoroAction,
+      snoozePomodoro: snoozePomodoroAction,
+      resetPomodoro: resetPomodoroAction,
+      completePomodoroSession: completePomodoroSessionAction,
+      adjustPomodoroDuration: adjustPomodoroDurationAction,
     }),
     [
       clearStorageNotice,
@@ -123,6 +173,15 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       openCategory,
       openTopic,
       storageNotice,
+      selectPomodoroModeAction,
+      abandonPomodoroSessionAction,
+      startPomodoroAction,
+      pausePomodoroAction,
+      resumePomodoroAction,
+      snoozePomodoroAction,
+      resetPomodoroAction,
+      completePomodoroSessionAction,
+      adjustPomodoroDurationAction,
       updateCategoryAction,
       updateEntryAction,
       updateTopicAction,

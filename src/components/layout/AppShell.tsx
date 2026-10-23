@@ -1,12 +1,16 @@
-import { ChevronRight, Plus, X } from 'lucide-react'
+import { ChevronRight, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { getPageTitle, productMark } from '@/app/routes'
 import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
-import { PomodoroPlaceholder } from '@/components/pomodoro/PomodoroPlaceholder'
+import { PomodoroLauncher, PomodoroTimer } from '@/components/pomodoro/PomodoroTimer'
+import { useAmbienceController } from '@/components/pomodoro/use-ambience-controller'
+import { usePomodoroController } from '@/components/pomodoro/use-pomodoro-controller'
 import { Button } from '@/components/ui/button'
 import { findCategory, findTopic, type StudyData } from '@/lib/study-data'
 import type { StorageNotice } from '@/lib/study-context'
+import { cn } from '@/lib/utils'
 import { useStudyData } from '@/lib/use-study-data'
 
 function Brand() {
@@ -93,41 +97,29 @@ function StorageNotice({ storageNotice, clearStorageNotice }: { storageNotice: S
   )
 }
 
-function FloatingAddButton({ pathname }: { pathname: string }) {
-  const navigate = useNavigate()
-  const { categoryId, topicId } = useParams()
-  let target: string | null = null
-  let label = ''
-
-  if (topicId && categoryId && pathname.includes('/topics/')) {
-    target = `${pathname}?action=create`
-    label = 'Create entry'
-  } else if (categoryId && pathname.startsWith('/categories/')) {
-    target = `${pathname}?action=create`
-    label = 'Create topic'
-  } else if (pathname === '/' || pathname === '/categories') {
-    target = '/categories?action=create'
-    label = 'Create category'
-  }
-
-  if (!target) return null
-
-  return (
-    <Button
-      type="button"
-      size="icon-lg"
-      aria-label={label}
-      className="fixed right-4 bottom-6 z-20 rounded-full bg-primary text-primary-foreground hover:bg-primary/85 sm:right-7 sm:bottom-8"
-      onClick={() => navigate(target)}
-    >
-      <Plus aria-hidden="true" />
-    </Button>
-  )
-}
-
 export function AppShell() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { data, storageNotice, clearStorageNotice } = useStudyData()
+  const pomodoro = usePomodoroController()
+  const ambience = useAmbienceController()
+  const [isPomodoroOpen, setIsPomodoroOpen] = useState(false)
+  const pomodoroPanelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isPomodoroOpen) return
+
+    function handleOutsidePointerDown(event: PointerEvent) {
+      if (!(event.target instanceof Element)) return
+      if (event.target.closest('[data-pomodoro-launcher]')) return
+      if (event.target.closest('[data-ambience-toggle]')) return
+      if (pomodoroPanelRef.current?.contains(event.target)) return
+      setIsPomodoroOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown)
+  }, [isPomodoroOpen])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -160,11 +152,23 @@ export function AppShell() {
           <StorageNotice storageNotice={storageNotice} clearStorageNotice={clearStorageNotice} />
         </div>
         <Outlet />
-        <FloatingAddButton pathname={pathname} />
-        <div className="mt-8 flex justify-end">
-          <PomodoroPlaceholder />
-        </div>
       </main>
+      <PomodoroLauncher controller={pomodoro} ambience={ambience} open={isPomodoroOpen} onClick={() => setIsPomodoroOpen((open) => !open)} />
+      <div
+        ref={pomodoroPanelRef}
+        aria-hidden={!isPomodoroOpen}
+        className={cn(
+          'fixed inset-0 z-50 min-h-0 overflow-x-hidden overflow-y-auto bg-[var(--pomodoro-panel)] p-4 sm:p-6 lg:inset-x-2 lg:top-1/2 lg:right-7 lg:bottom-auto lg:left-auto lg:flex lg:max-h-[calc(100dvh-6rem)] lg:w-[min(48rem,calc(100vw-3.5rem))] lg:-translate-y-1/2 lg:flex-col lg:overflow-hidden lg:bg-transparent lg:p-0',
+          !isPomodoroOpen && 'pointer-events-none invisible',
+        )}
+      >
+          <div className="flex min-h-full w-full items-start justify-center lg:block lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-[2rem]">
+            <PomodoroTimer controller={pomodoro} onClose={() => setIsPomodoroOpen(false)} onOpenSettings={() => {
+              setIsPomodoroOpen(false)
+              navigate('/settings#pomodoro-settings')
+            }} />
+          </div>
+      </div>
     </div>
   )
 }

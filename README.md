@@ -20,13 +20,13 @@ Study Reviewer currently provides:
   sliding navigation, swipe gestures, and session-only shuffle
 - Settings for light, dark, and system themes, study defaults, flashcard
   orientation, entry-field copy/paste, spellcheck, and Pomodoro preferences
-- Responsive navigation, breadcrumbs, visible focus states, and a compact
-  Pomodoro placeholder
+- Responsive navigation, breadcrumbs, visible focus states, and a persistent
+  Pomodoro timer
 
 Study data remains in the current browser and device through `localStorage`; no
 backend, account, cloud sync, remote API, remote font, or network-loaded core
 asset is required. Backup and restore, exports, and offline installation remain
-planned improvements, while the functional Pomodoro timer is still to come.
+planned improvements.
 
 ## Technology
 
@@ -55,3 +55,12 @@ bun run build
 Study Reviewer keeps personal study data in the browser where it is created.
 JSON backup and restore will provide a portable way to preserve local study
 materials as the library features are added.
+
+## Pomodoro web audio note
+
+Automatic alarm playback and automatic ambience startup are deferred until the
+planned Electron desktop migration because browser autoplay restrictions make
+those behaviors unreliable. The web app preserves the audio assets, playback
+integration, and saved preferences for that migration. Manual ambience playback
+through the floating music control and the ambience preview in Settings remain
+available.

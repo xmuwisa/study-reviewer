@@ -15,6 +15,7 @@ import {
   type TimerState,
   type Topic,
 } from '@/lib/study-data'
+import { POMODORO_ALARM_OPTIONS, POMODORO_AMBIENCE_OPTIONS, POMODORO_SNOOZE_OPTIONS } from '@/lib/pomodoro-audio'
 
 export type ValidationIssue = {
   path: string
@@ -132,8 +133,17 @@ function validatePomodoroPreferences(value: unknown, path: string, issues: Valid
   if (!isNonNegativeInteger(value.sessionsBeforeLongBreak) || value.sessionsBeforeLongBreak < 1 || value.sessionsBeforeLongBreak > 12) {
     addIssue(issues, `${path}.sessionsBeforeLongBreak`, 'must be an integer from 1 to 12')
   }
-  for (const field of ['autoSwitch', 'autoStart', 'soundEnabled', 'notificationsEnabled'] as const) {
+  for (const field of ['autoSwitch', 'autoStart', 'soundEnabled', 'notificationsEnabled', 'autoPlayAmbience', 'ambienceMuted'] as const) {
     if (typeof value[field] !== 'boolean') addIssue(issues, `${path}.${field}`, 'must be a boolean')
+  }
+  if (typeof value.defaultAlarm !== 'string' || !POMODORO_ALARM_OPTIONS.some((option) => option.value === value.defaultAlarm)) {
+    addIssue(issues, `${path}.defaultAlarm`, 'must be a supported alarm or none')
+  }
+  if (typeof value.defaultAmbience !== 'string' || !POMODORO_AMBIENCE_OPTIONS.some((option) => option.value === value.defaultAmbience)) {
+    addIssue(issues, `${path}.defaultAmbience`, 'must be a supported ambience or none')
+  }
+  if (typeof value.defaultSnoozeMinutes !== 'number' || !POMODORO_SNOOZE_OPTIONS.some((option) => option === value.defaultSnoozeMinutes)) {
+    addIssue(issues, `${path}.defaultSnoozeMinutes`, 'must be 5, 10, or 15 minutes')
   }
 
   return true
@@ -225,10 +235,56 @@ function validateTimer(value: unknown, path: string, issues: ValidationIssue[]):
     return false
   }
 
+  if (!isPomodoroMode(value.selectedMode)) addIssue(issues, `${path}.selectedMode`, 'must be a supported Pomodoro mode')
+  if (!isNonNegativeInteger(value.selectedDurationMinutes) || value.selectedDurationMinutes < 1 || value.selectedDurationMinutes > 120) {
+    addIssue(issues, `${path}.selectedDurationMinutes`, 'must be an integer from 1 to 120')
+  }
   if (value.activeSession !== null) validatePomodoroSession(value.activeSession, `${path}.activeSession`, issues)
   if (!isNonNegativeInteger(value.focusCycleCount)) addIssue(issues, `${path}.focusCycleCount`, 'must be a non-negative integer')
 
   return true
+}
+
+function getDefaultPomodoroDuration(value: UnknownRecord, mode: PomodoroMode) {
+  const defaults = createDefaultSettings().pomodoro
+  const settings = isRecord(value.settings) && isRecord(value.settings.pomodoro) ? value.settings.pomodoro : defaults
+  if (mode === 'short-break' && typeof settings.shortBreakMinutes === 'number') return settings.shortBreakMinutes
+  if (mode === 'long-break' && typeof settings.longBreakMinutes === 'number') return settings.longBreakMinutes
+  if (mode === 'focus' && typeof settings.focusMinutes === 'number') return settings.focusMinutes
+  return defaults.focusMinutes
+}
+
+function migrateTimerState(value: UnknownRecord) {
+  const timer = isRecord(value.timer) ? value.timer : {}
+  const selectedMode = isPomodoroMode(timer.selectedMode) ? timer.selectedMode : 'focus'
+  const selectedDurationMinutes = isNonNegativeInteger(timer.selectedDurationMinutes) && timer.selectedDurationMinutes >= 1 && timer.selectedDurationMinutes <= 120
+    ? timer.selectedDurationMinutes
+    : getDefaultPomodoroDuration(value, selectedMode)
+
+  return {
+    ...value,
+    timer: {
+      ...timer,
+      selectedMode,
+      selectedDurationMinutes,
+    },
+  }
+}
+
+function migratePomodoroPreferences(value: UnknownRecord) {
+  const settings = isRecord(value.settings) ? value.settings : {}
+  const pomodoro = isRecord(settings.pomodoro) ? settings.pomodoro : {}
+
+  return {
+    ...value,
+    settings: {
+      ...settings,
+      pomodoro: {
+        ...createDefaultSettings().pomodoro,
+        ...pomodoro,
+      },
+    },
+  }
 }
 
 function validateUniqueIds(records: Array<{ id: unknown }>, path: string, issues: ValidationIssue[]) {
@@ -260,7 +316,7 @@ export function migrateStudyData(value: unknown): MigrationResult {
 
     return {
       ok: true,
-      value: { ...value, schemaVersion: STUDY_DATA_SCHEMA_VERSION, entries, settings },
+      value: migrateTimerState(migratePomodoroPreferences({ ...value, schemaVersion: STUDY_DATA_SCHEMA_VERSION, entries, settings })),
       version: STUDY_DATA_SCHEMA_VERSION,
     }
   }
@@ -269,7 +325,7 @@ export function migrateStudyData(value: unknown): MigrationResult {
     return { ok: false, reason: 'unsupported', message: `Stored schema version ${value.schemaVersion} is not supported.` }
   }
 
-  return { ok: true, value, version: STUDY_DATA_SCHEMA_VERSION }
+  return { ok: true, value: migrateTimerState(migratePomodoroPreferences(value)), version: STUDY_DATA_SCHEMA_VERSION }
 }
 
 export function validateStudyData(value: unknown): ValidationResult {
