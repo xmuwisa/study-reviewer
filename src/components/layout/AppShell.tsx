@@ -1,10 +1,12 @@
 import { ChevronRight, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useLocation, useParams } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { getPageTitle, productMark } from '@/app/routes'
 import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
 import { PomodoroLauncher, PomodoroTimer } from '@/components/pomodoro/PomodoroTimer'
+import { useAmbienceController } from '@/components/pomodoro/use-ambience-controller'
+import { usePomodoroController } from '@/components/pomodoro/use-pomodoro-controller'
 import { Button } from '@/components/ui/button'
 import { findCategory, findTopic, type StudyData } from '@/lib/study-data'
 import type { StorageNotice } from '@/lib/study-context'
@@ -97,7 +99,10 @@ function StorageNotice({ storageNotice, clearStorageNotice }: { storageNotice: S
 
 export function AppShell() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { data, storageNotice, clearStorageNotice } = useStudyData()
+  const pomodoro = usePomodoroController()
+  const ambience = useAmbienceController()
   const [isPomodoroOpen, setIsPomodoroOpen] = useState(false)
   const pomodoroPanelRef = useRef<HTMLDivElement>(null)
 
@@ -107,6 +112,7 @@ export function AppShell() {
     function handleOutsidePointerDown(event: PointerEvent) {
       if (!(event.target instanceof Element)) return
       if (event.target.closest('[data-pomodoro-launcher]')) return
+      if (event.target.closest('[data-ambience-toggle]')) return
       if (pomodoroPanelRef.current?.contains(event.target)) return
       setIsPomodoroOpen(false)
     }
@@ -147,7 +153,7 @@ export function AppShell() {
         </div>
         <Outlet />
       </main>
-      <PomodoroLauncher open={isPomodoroOpen} onClick={() => setIsPomodoroOpen((open) => !open)} />
+      <PomodoroLauncher controller={pomodoro} ambience={ambience} open={isPomodoroOpen} onClick={() => setIsPomodoroOpen((open) => !open)} />
       <div
         ref={pomodoroPanelRef}
         aria-hidden={!isPomodoroOpen}
@@ -157,7 +163,10 @@ export function AppShell() {
         )}
       >
           <div className="flex min-h-full w-full items-start justify-center lg:block lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:rounded-[2rem]">
-            <PomodoroTimer onClose={() => setIsPomodoroOpen(false)} />
+            <PomodoroTimer controller={pomodoro} onClose={() => setIsPomodoroOpen(false)} onOpenSettings={() => {
+              setIsPomodoroOpen(false)
+              navigate('/settings#pomodoro-settings')
+            }} />
           </div>
       </div>
     </div>

@@ -29,7 +29,9 @@ export type StudyContextValue = {
   startPomodoro: () => boolean
   pausePomodoro: () => boolean
   resumePomodoro: () => boolean
+  snoozePomodoro: (durationMinutes: number) => boolean
   resetPomodoro: () => boolean
+  completePomodoroSession: (mode: PomodoroMode, durationMinutes: number) => boolean
   adjustPomodoroDuration: (durationMinutes: number) => boolean
 }
 

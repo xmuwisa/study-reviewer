@@ -1,3 +1,9 @@
+import type {
+  PomodoroAlarmSelection,
+  PomodoroAmbienceSelection,
+  PomodoroSnoozeMinutes,
+} from '@/lib/pomodoro-audio'
+
 export const STUDY_DATA_SCHEMA_VERSION = 2 as const
 export const STUDY_DATA_STORAGE_KEY = `study-reviewer:data:v${STUDY_DATA_SCHEMA_VERSION}`
 export const LEGACY_STUDY_DATA_STORAGE_KEYS = ['study-reviewer:data:v1'] as const
@@ -50,6 +56,11 @@ export type PomodoroPreferences = {
   autoStart: boolean
   soundEnabled: boolean
   notificationsEnabled: boolean
+  autoPlayAmbience: boolean
+  ambienceMuted: boolean
+  defaultAlarm: PomodoroAlarmSelection
+  defaultAmbience: PomodoroAmbienceSelection
+  defaultSnoozeMinutes: PomodoroSnoozeMinutes
 }
 
 export type StudySettings = {
@@ -145,6 +156,11 @@ export function createDefaultSettings(): StudySettings {
       autoStart: false,
       soundEnabled: false,
       notificationsEnabled: false,
+      autoPlayAmbience: false,
+      ambienceMuted: false,
+      defaultAlarm: 'none',
+      defaultAmbience: 'none',
+      defaultSnoozeMinutes: 5,
     },
   }
 }

@@ -45,6 +45,8 @@ export function createPomodoroSession(mode: PomodoroMode, durationMinutes: numbe
 export function getPomodoroRemainingSeconds(session: PomodoroSession | null, now: Timestamp) {
   if (!session) return 0
 
+  if (session.status === 'completed') return 0
+
   if (session.status === 'paused' && session.endsAt !== null && session.pausedAt !== null) {
     return Math.max(0, Math.ceil((session.endsAt - session.pausedAt) / 1000))
   }
@@ -88,7 +90,7 @@ export function startPomodoro(data: StudyData, now: Timestamp) {
   const activeSession = data.timer.activeSession
   if (activeSession?.status === 'running' || activeSession?.status === 'paused') return data
 
-  const durationMinutes = clampPomodoroMinutes(data.timer.selectedDurationMinutes || getDefaultDuration(data, data.timer.selectedMode))
+  const durationMinutes = getDefaultDuration(data, data.timer.selectedMode)
 
   return withTimer(data, {
     ...data.timer,
@@ -127,12 +129,53 @@ export function resumePomodoro(data: StudyData, now: Timestamp) {
   })
 }
 
+export function snoozePomodoro(data: StudyData, durationMinutes: number, now: Timestamp) {
+  const session = data.timer.activeSession
+  if (!session || (session.status !== 'completed' && !(session.status === 'running' && session.endsAt !== null && session.endsAt <= now))) return data
+
+  const snoozeMinutes = clampPomodoroMinutes(durationMinutes)
+
+  return withTimer(data, {
+    ...data.timer,
+    selectedDurationMinutes: snoozeMinutes,
+    activeSession: {
+      ...session,
+      status: 'running',
+      startedAt: now,
+      endsAt: now + snoozeMinutes * MINUTE_IN_MS,
+      pausedAt: null,
+      completedAt: null,
+    },
+  })
+}
+
 export function resetPomodoro(data: StudyData) {
   return withTimer(data, {
     ...data.timer,
     selectedDurationMinutes: getDefaultDuration(data, data.timer.selectedMode),
     activeSession: null,
   })
+}
+
+export function completePomodoroSession(data: StudyData, mode: PomodoroMode, durationMinutes: number, now: Timestamp) {
+  const completedSession = createPomodoroSession(mode, durationMinutes, now - clampPomodoroMinutes(durationMinutes) * MINUTE_IN_MS)
+  const transition = getCompletionTransition(data, completedSession)
+  const nextMode = data.settings.pomodoro.autoSwitch ? transition.selectedMode : mode
+  const nextDuration = getDefaultDuration(data, nextMode)
+
+  return withTimer(
+    {
+      ...data,
+      activity: transition.activity,
+    },
+    {
+      ...data.timer,
+      selectedMode: nextMode,
+      selectedDurationMinutes: nextDuration,
+      focusCycleCount: transition.focusCycleCount,
+      activeSession: null,
+    },
+  )
 }
 
 export function adjustPomodoroDuration(data: StudyData, durationMinutes: number) {
@@ -173,25 +216,12 @@ export function reconcilePomodoro(data: StudyData, now: Timestamp) {
   const session = data.timer.activeSession
   if (!session || session.status !== 'running' || session.endsAt === null || now < session.endsAt) return data
 
-  const transition = getCompletionTransition(data, session)
-  const nextMode = data.settings.pomodoro.autoSwitch ? transition.selectedMode : session.mode
-  const nextDuration = getDefaultDuration(data, nextMode)
-  const nextData: StudyData = {
-    ...data,
-    activity: transition.activity,
-    timer: {
-      ...data.timer,
-      selectedMode: nextMode,
-      selectedDurationMinutes: nextDuration,
-      focusCycleCount: transition.focusCycleCount,
-      activeSession: null,
+  return withTimer(data, {
+    ...data.timer,
+    activeSession: {
+      ...session,
+      status: 'completed',
+      completedAt: now,
     },
-  }
-
-  if (!data.settings.pomodoro.autoStart) return nextData
-
-  return withTimer(nextData, {
-    ...nextData.timer,
-    activeSession: createPomodoroSession(nextMode, nextDuration, now),
   })
 }

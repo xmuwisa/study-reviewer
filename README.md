@@ -55,3 +55,12 @@ bun run build
 Study Reviewer keeps personal study data in the browser where it is created.
 JSON backup and restore will provide a portable way to preserve local study
 materials as the library features are added.
+
+## Pomodoro web audio note
+
+Automatic alarm playback and automatic ambience startup are deferred until the
+planned Electron desktop migration because browser autoplay restrictions make
+those behaviors unreliable. The web app preserves the audio assets, playback
+integration, and saved preferences for that migration. Manual ambience playback
+through the floating music control and the ambience preview in Settings remain
+available.

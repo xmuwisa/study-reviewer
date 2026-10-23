@@ -1,55 +1,15 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
-import { Pause, Play, RotateCcw, X } from 'lucide-react'
+import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { Music2, Pause, Play, RotateCcw, Settings, VolumeX, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import type { PomodoroMode } from '@/lib/study-data'
-import { useStudyData } from '@/lib/use-study-data'
 import { cn } from '@/lib/utils'
-
-const MIN_DURATION_MINUTES = 1
-const MAX_DURATION_MINUTES = 120
-const MAX_INDICATOR_ANGLE = 720
-const TICK_MARKS = Array.from({ length: 60 }, (_, index) => index)
-const LAUNCHER_TICK_MARKS = Array.from({ length: 16 }, (_, index) => index)
-const CALYX_CLIP_PATH = 'polygon(50% 0%, 100% 100%, 50% 78%, 0% 100%)'
-type PomodoroDurationKey = 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes'
-
-const TIMER_MODES: Record<PomodoroMode, { durationKey: PomodoroDurationKey; label: string; modeLabel: string }> = {
-  focus: { durationKey: 'focusMinutes', label: 'Focus timer', modeLabel: 'Focus' },
-  'short-break': { durationKey: 'shortBreakMinutes', label: 'Short break timer', modeLabel: 'Short Break' },
-  'long-break': { durationKey: 'longBreakMinutes', label: 'Long break timer', modeLabel: 'Long Break' },
-}
-
-function clampDuration(value: number) {
-  return Math.min(MAX_DURATION_MINUTES, Math.max(MIN_DURATION_MINUTES, Math.round(value)))
-}
-
-function formatTimer(seconds: number) {
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
-}
-
-function getIndicatorAngle(minutes: number) {
-  return Math.min(MAX_INDICATOR_ANGLE, Math.max(0, (minutes / MAX_DURATION_MINUTES) * MAX_INDICATOR_ANGLE))
-}
-
-function getCountdownAngle(remainingSeconds: number, durationMinutes: number) {
-  const totalSeconds = Math.max(1, durationMinutes * 60)
-  const remainingRatio = Math.min(1, Math.max(0, remainingSeconds / totalSeconds))
-  return remainingRatio * getIndicatorAngle(durationMinutes)
-}
-
-function getPointerAngle(event: PointerEvent<HTMLDivElement>) {
-  const bounds = event.currentTarget.getBoundingClientRect()
-  const x = event.clientX - (bounds.left + bounds.width / 2)
-  const y = event.clientY - (bounds.top + bounds.height / 2)
-  return Math.atan2(x, -y)
-}
+import type { AmbienceController } from './use-ambience-controller'
+import type { PomodoroController } from './use-pomodoro-controller'
+import { CALYX_CLIP_PATH, clampDuration, formatTimer, getCountdownAngle, getIndicatorAngle, getPointerAngle, LAUNCHER_TICK_MARKS, MAX_DURATION_MINUTES, MIN_DURATION_MINUTES, TIMER_MODES, TICK_MARKS } from './pomodoro-model'
 
 function TomatoCalyx({ className }: { className?: string }) {
   return (
@@ -199,126 +159,95 @@ function TomatoDial({ duration, indicatorAngle, label, timerSeconds, onDurationC
   )
 }
 
-export function PomodoroLauncher({ open, onClick }: { open: boolean; onClick: () => void }) {
+export function PomodoroLauncher({ controller, ambience, open, onClick }: { controller: PomodoroController; ambience: AmbienceController; open: boolean; onClick: () => void }) {
   return (
-    <Button
-      type="button"
-      size="icon-lg"
-      data-pomodoro-launcher
-      aria-expanded={open}
-      aria-label={open ? 'Close Pomodoro timer' : 'Open Pomodoro timer'}
-      className="fixed right-4 bottom-6 z-50 size-16 overflow-hidden rounded-full border-[3px] border-[var(--pomodoro-ring)] bg-[var(--pomodoro-ring)] p-0 shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] transition-transform hover:bg-[var(--pomodoro-ring)] hover:scale-105 sm:right-7 sm:bottom-8"
-      onClick={onClick}
-    >
-      <span className="pomodoro-tomato-face absolute inset-[7%] overflow-hidden rounded-full">
-        <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex justify-center">
-          {LAUNCHER_TICK_MARKS.map((tick) => (
-            <span className="absolute inset-0 flex justify-center" key={tick} style={{ transform: `rotate(${tick * 22.5}deg)` }}>
-              <span className="mt-[3%] block h-[11%] w-[3%] rounded-full bg-[var(--pomodoro-tick)]" />
+    <div className="fixed right-4 bottom-6 z-50 sm:right-7 sm:bottom-8">
+      <div className="flex flex-col items-center gap-3">
+        <Button
+          type="button"
+          size="icon-lg"
+          variant="ghost"
+          data-ambience-toggle
+          aria-label={ambience.isPlaying ? 'Turn ambience off' : 'Turn ambience on'}
+          className="size-14 shrink-0 rounded-full bg-[var(--pomodoro-control)] text-[var(--primary-foreground)] shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] transition-transform hover:scale-105 hover:bg-[var(--pomodoro-control)]/90 hover:text-[var(--primary-foreground)]"
+          disabled={!ambience.available}
+          onClick={ambience.toggle}
+        >
+          {ambience.isPlaying ? <VolumeX aria-hidden="true" /> : <Music2 aria-hidden="true" />}
+        </Button>
+        <div className="relative">
+          {!open && controller.alarmActive ? (
+            <div className="absolute top-1/2 right-full mr-2 flex -translate-y-1/2 items-center gap-2" aria-label="Pomodoro alarm actions">
+              <Button type="button" size="sm" variant="secondary" className="bg-[var(--pomodoro-ink)] font-semibold text-[var(--pomodoro-panel)] shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] hover:bg-[var(--pomodoro-ink)]/90 hover:text-[var(--pomodoro-panel)]" onClick={controller.stopAlarm}>Stop</Button>
+              <Button type="button" size="sm" className="bg-[var(--pomodoro-control)] text-[var(--primary-foreground)] shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] hover:bg-[var(--pomodoro-control)]/90" onClick={controller.snoozeAlarm}>Snooze</Button>
+            </div>
+          ) : !open && controller.isRunning ? (
+            <div aria-live="polite" className="absolute top-1/2 right-full mr-2 flex -translate-y-1/2 items-center gap-2 rounded-full border border-[color-mix(in_oklab,var(--pomodoro-ink)_14%,transparent)] bg-[var(--pomodoro-panel)] px-3 py-2 text-right shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)]">
+              <span className="text-sm font-semibold tabular-nums text-[var(--pomodoro-ink)]">{controller.remainingLabel}</span>
+              <span className="max-w-24 truncate text-xs text-[var(--pomodoro-muted)]">{controller.modeLabel}</span>
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            size="icon-lg"
+            data-pomodoro-launcher
+            aria-expanded={open}
+            aria-label={open ? 'Close Pomodoro timer' : controller.alarmActive ? 'Open Pomodoro timer with active alarm' : 'Open Pomodoro timer'}
+            className={cn(
+              'relative aspect-square size-16 shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--pomodoro-ring)] bg-[var(--pomodoro-ring)] p-0 shadow-[0_16px_30px_-18px_rgb(0_0_0_/_0.95)] transition-transform hover:scale-105 hover:bg-[var(--pomodoro-ring)]',
+              controller.alarmActive && 'pomodoro-alarm-pulse',
+            )}
+            onClick={onClick}
+          >
+            <span className="pomodoro-tomato-face absolute inset-[7%] overflow-hidden rounded-full">
+              <span aria-hidden="true" className="pointer-events-none absolute inset-0 flex justify-center">
+                {LAUNCHER_TICK_MARKS.map((tick) => (
+                  <span className="absolute inset-0 flex justify-center" key={tick} style={{ transform: `rotate(${tick * 22.5}deg)` }}>
+                    <span className="mt-[3%] block h-[11%] w-[3%] rounded-full bg-[var(--pomodoro-tick)]" />
+                  </span>
+                ))}
+              </span>
+              <TomatoCalyx className="top-[13%] h-[38%] w-[68%]" />
             </span>
-          ))}
-        </span>
-        <TomatoCalyx className="top-[13%] h-[38%] w-[68%]" />
-      </span>
-    </Button>
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
-export function PomodoroTimer({ onClose }: { onClose: () => void }) {
-  const { data, updateSettings } = useStudyData()
-  const [mode, setMode] = useState<PomodoroMode>('focus')
-  const [preciseDuration, setPreciseDuration] = useState(() => String(data.settings.pomodoro.focusMinutes))
-  const [isRunning, setIsRunning] = useState(false)
-  const [hasStarted, setHasStarted] = useState(false)
-  const [remainingSeconds, setRemainingSeconds] = useState(() => data.settings.pomodoro.focusMinutes * 60)
-  const [sessionDurationMinutes, setSessionDurationMinutes] = useState<number | null>(null)
-  const modeConfig = TIMER_MODES[mode]
-  const duration = data.settings.pomodoro[modeConfig.durationKey]
-
-  useEffect(() => {
-    if (!isRunning) return
-
-    const intervalId = window.setInterval(() => {
-      setRemainingSeconds((seconds) => Math.max(0, seconds - 1))
-    }, 1000)
-
-    return () => window.clearInterval(intervalId)
-  }, [isRunning])
-
-  useEffect(() => {
-    if (isRunning && remainingSeconds === 0) setIsRunning(false)
-  }, [isRunning, remainingSeconds])
-
-  function setDurationValue(value: number) {
-    const nextDuration = clampDuration(value)
-    const saved = updateSettings({ pomodoro: { [modeConfig.durationKey]: nextDuration } })
-    setPreciseDuration(saved ? String(nextDuration) : String(duration))
-    if (!isRunning) {
-      setHasStarted(false)
-      setSessionDurationMinutes(null)
-      setRemainingSeconds(nextDuration * 60)
-    }
-  }
-
-  function handleModeChange(value: string[]) {
-    const nextMode = value[0]
-    if (nextMode !== 'focus' && nextMode !== 'short-break' && nextMode !== 'long-break') return
-
-    const nextDuration = data.settings.pomodoro[TIMER_MODES[nextMode].durationKey]
-    setMode(nextMode)
-    setPreciseDuration(String(nextDuration))
-    setIsRunning(false)
-    setHasStarted(false)
-    setSessionDurationMinutes(null)
-    setRemainingSeconds(nextDuration * 60)
-  }
-
-  function handleReset() {
-    setIsRunning(false)
-    setHasStarted(false)
-    setSessionDurationMinutes(null)
-    setRemainingSeconds(duration * 60)
-  }
-
-  function handlePlayPause() {
-    if (remainingSeconds === 0) setRemainingSeconds(duration * 60)
-    if (!isRunning) {
-      setSessionDurationMinutes(duration)
-      setHasStarted(true)
-    }
-    setIsRunning((running) => !running)
-  }
-
-  function handlePreciseDurationChange(value: string) {
-    setPreciseDuration(value)
-    if (value === '') return
-
-    const parsedValue = Number(value)
-    if (Number.isFinite(parsedValue)) setDurationValue(parsedValue)
-  }
-
-  function commitPreciseDuration() {
-    const parsedValue = Number(preciseDuration)
-    setDurationValue(Number.isFinite(parsedValue) ? parsedValue : duration)
-  }
-
-  const indicatorAngle = hasStarted
-    ? getCountdownAngle(remainingSeconds, sessionDurationMinutes ?? duration)
-    : getIndicatorAngle(duration)
+export function PomodoroTimer({ controller, onClose, onOpenSettings }: { controller: PomodoroController; onClose: () => void; onOpenSettings: () => void }) {
+  const { mode, duration, preciseDuration, isRunning, hasStarted, remainingSeconds, indicatorDurationMinutes, alarmActive, setDurationValue, handleModeChange, handleReset, handlePlayPause, handlePreciseDurationChange, commitPreciseDuration, stopAlarm, snoozeAlarm } = controller
+  const indicatorAngle = hasStarted ? getCountdownAngle(remainingSeconds, indicatorDurationMinutes) : getIndicatorAngle(duration)
 
   return (
-    <Card className="pomodoro-panel my-auto w-full max-w-3xl overflow-hidden rounded-none border-0 px-1 py-1 lg:my-0 lg:rounded-[2rem] lg:border">
-      <CardHeader className="relative w-full gap-2 px-5 pb-0 pt-6 text-left sm:px-8 sm:pt-7">
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Close Pomodoro panel"
-          className="absolute top-4 right-4 rounded-full bg-[var(--pomodoro-panel-raised)] text-[var(--pomodoro-ink)] hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] focus-visible:ring-[var(--pomodoro-control)]/50 sm:top-5 sm:right-5"
-          onClick={onClose}
+    <Card className="pomodoro-panel relative my-auto w-full max-w-3xl overflow-hidden rounded-none border-0 px-1 py-1 lg:my-0 lg:rounded-[2rem] lg:border">
+      {alarmActive && (
+        <div
+          aria-labelledby="pomodoro-alarm-title"
+          aria-modal="true"
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-5 bg-[color-mix(in_oklab,var(--pomodoro-panel)_82%,transparent)] p-6 text-center backdrop-blur-sm"
+          role="alertdialog"
         >
-          <X aria-hidden="true" />
-        </Button>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--pomodoro-muted)]">Session complete</p>
+            <h2 id="pomodoro-alarm-title" className="font-heading text-2xl font-semibold tracking-tight text-[var(--pomodoro-ink)] sm:text-3xl">Time for a transition</h2>
+          </div>
+          <div className="flex w-full max-w-sm gap-3">
+            <Button type="button" variant="secondary" className="min-w-0 flex-1 bg-[var(--pomodoro-ink)] font-semibold text-[var(--pomodoro-panel)] shadow-[0_8px_24px_-16px_rgb(0_0_0_/_0.9)] hover:bg-[var(--pomodoro-ink)]/90 hover:text-[var(--pomodoro-panel)]" onClick={stopAlarm}>Stop</Button>
+            <Button type="button" className="min-w-0 flex-1 bg-[var(--pomodoro-control)] text-[var(--primary-foreground)] hover:bg-[var(--pomodoro-control)]/90" onClick={snoozeAlarm}>Snooze</Button>
+          </div>
+        </div>
+      )}
+      <CardHeader className="relative w-full gap-2 px-5 pb-0 pt-6 text-left sm:px-8 sm:pt-7">
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 sm:top-5 sm:right-5">
+          <Button type="button" size="icon-sm" variant="ghost" aria-label="Close Pomodoro panel" className="rounded-full bg-[var(--pomodoro-panel-raised)] text-[var(--pomodoro-ink)] hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] focus-visible:ring-[var(--pomodoro-control)]/50" onClick={onClose}>
+            <X aria-hidden="true" />
+          </Button>
+          <Button type="button" size="icon-sm" variant="ghost" aria-label="Open Pomodoro settings" className="rounded-full bg-[var(--pomodoro-panel-raised)] text-[var(--pomodoro-ink)] hover:bg-[var(--pomodoro-panel-raised)] hover:text-[var(--pomodoro-ink)] focus-visible:ring-[var(--pomodoro-control)]/50" onClick={onOpenSettings}>
+            <Settings aria-hidden="true" />
+          </Button>
+        </div>
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--pomodoro-muted)]">Pomodoro</p>
         <CardTitle className="font-heading text-2xl font-semibold tracking-tight text-[var(--pomodoro-ink)] sm:text-3xl">Set your session length</CardTitle>
         <p className="max-w-xl text-base leading-relaxed text-[var(--pomodoro-muted)]">Customize your focus and break sessions to fit your study routine.</p>
@@ -336,7 +265,7 @@ export function PomodoroTimer({ onClose }: { onClose: () => void }) {
       </CardHeader>
 
       <CardContent className="flex w-full flex-col items-stretch gap-5 px-5 pb-6 pt-4 sm:gap-6 sm:px-8 sm:pb-7">
-        <TomatoDial duration={duration} indicatorAngle={indicatorAngle} label={modeConfig.label} timerSeconds={remainingSeconds} onDurationChange={setDurationValue} />
+        <TomatoDial duration={duration} indicatorAngle={indicatorAngle} label={TIMER_MODES[mode].label} timerSeconds={remainingSeconds} onDurationChange={setDurationValue} />
 
         <div className="flex w-full max-w-3xl flex-col gap-5">
           <div className="flex w-full gap-3">

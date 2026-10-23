@@ -20,10 +20,12 @@ import { createStudyRepository } from '@/lib/study-storage'
 import {
   abandonPomodoroSession,
   adjustPomodoroDuration,
+  completePomodoroSession,
   pausePomodoro,
   reconcilePomodoro,
   resetPomodoro,
   resumePomodoro,
+  snoozePomodoro,
   selectPomodoroMode,
   startPomodoro,
 } from '@/lib/pomodoro'
@@ -107,7 +109,9 @@ export function StudyProvider({ children }: { children: ReactNode }) {
   const startPomodoroAction = useCallback(() => commit(startPomodoro(data, Date.now())), [commit, data])
   const pausePomodoroAction = useCallback(() => commit(pausePomodoro(data, Date.now())), [commit, data])
   const resumePomodoroAction = useCallback(() => commit(resumePomodoro(data, Date.now())), [commit, data])
+  const snoozePomodoroAction = useCallback((durationMinutes: number) => commit(snoozePomodoro(data, durationMinutes, Date.now())), [commit, data])
   const resetPomodoroAction = useCallback(() => commit(resetPomodoro(data)), [commit, data])
+  const completePomodoroSessionAction = useCallback((mode: PomodoroMode, durationMinutes: number) => commit(completePomodoroSession(data, mode, durationMinutes, Date.now())), [commit, data])
   const adjustPomodoroDurationAction = useCallback((durationMinutes: number) => commit(adjustPomodoroDuration(data, durationMinutes)), [commit, data])
   const clearStorageNotice = useCallback(() => setStorageNotice(null), [])
 
@@ -153,7 +157,9 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       startPomodoro: startPomodoroAction,
       pausePomodoro: pausePomodoroAction,
       resumePomodoro: resumePomodoroAction,
+      snoozePomodoro: snoozePomodoroAction,
       resetPomodoro: resetPomodoroAction,
+      completePomodoroSession: completePomodoroSessionAction,
       adjustPomodoroDuration: adjustPomodoroDurationAction,
     }),
     [
@@ -172,7 +178,9 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       startPomodoroAction,
       pausePomodoroAction,
       resumePomodoroAction,
+      snoozePomodoroAction,
       resetPomodoroAction,
+      completePomodoroSessionAction,
       adjustPomodoroDurationAction,
       updateCategoryAction,
       updateEntryAction,
