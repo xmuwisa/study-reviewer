@@ -2,7 +2,7 @@ import { ChevronRight, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 
-import { getPageTitle, productMark } from '@/app/routes'
+import { getPageTitle } from '@/app/routes'
 import { MobileNav, PrimaryNav } from '@/components/navigation/PrimaryNav'
 import { PomodoroLauncher, PomodoroTimer } from '@/components/pomodoro/PomodoroTimer'
 import { useAmbienceController } from '@/components/pomodoro/use-ambience-controller'
@@ -14,18 +14,23 @@ import { cn } from '@/lib/utils'
 import { useStudyData } from '@/lib/use-study-data'
 
 function Brand() {
-  const Mark = productMark
-
   return (
     <Link
       to="/"
       className="group flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       aria-label="Study Reviewer home"
     >
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-transform group-hover:-rotate-3">
-        <Mark aria-hidden="true" className="size-5" strokeWidth={1.8} />
-      </span>
-      <span className="min-w-0 truncate font-heading text-base font-semibold">Study Reviewer</span>
+      <img
+        src="/branding/logo-light.png"
+        alt="Study Reviewer"
+        className="block h-auto w-24 max-w-full object-contain transition-transform group-hover:-rotate-1 dark:hidden sm:w-32"
+      />
+      <img
+        src="/branding/logo-dark.png"
+        alt=""
+        aria-hidden="true"
+        className="hidden h-auto w-24 max-w-full object-contain transition-transform group-hover:-rotate-1 dark:block sm:w-32"
+      />
     </Link>
   )
 }

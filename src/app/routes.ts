@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BookOpen, FolderOpen, LayoutDashboard, Settings2 } from 'lucide-react'
+import { FolderOpen, LayoutDashboard, Settings2 } from 'lucide-react'
 
 export type NavigationItem = {
   label: string
@@ -22,5 +22,3 @@ export function getPageTitle(pathname: string) {
   if (pathname.startsWith('/categories/')) return 'Category detail'
   return 'Study Reviewer'
 }
-
-export const productMark = BookOpen
