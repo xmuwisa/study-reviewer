@@ -33,6 +33,8 @@ import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialo
 import { CollectionFormDialog, type CollectionFormValues } from '@/components/study/CollectionFormDialog'
 import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
 import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
+import { StudyDataActionsMenu } from '@/components/study/StudyDataActionsMenu'
+import { PdfExportControl } from '@/components/study/StudyPdfExport'
 import { ContextualDataTransfer, FullBackupControls } from '@/components/study/StudyDataTransfer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -1146,7 +1148,7 @@ export function CategoryDetailPage() {
     <div>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <PageHeading title={category.name} description={category.description || 'Organize focused study topics in this category.'} />
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:justify-end">
           <ContextualDataTransfer
             kind="category"
             data={data}
@@ -1154,8 +1156,24 @@ export function CategoryDetailPage() {
             destinationName={category.name}
             existingCount={getTopicsForCategory(data, category.id).length}
             onImport={(document, mode) => importCategory(category.id, document, mode)}
+            renderActions={(jsonActions) => (
+              <PdfExportControl
+                kind="category"
+                data={data}
+                categoryId={category.id}
+                renderActions={(pdfActions) => (
+                  <StudyDataActionsMenu
+                    onImportJson={jsonActions.onImportJson}
+                    onExportJson={jsonActions.onExportJson}
+                    exportJsonDisabled={jsonActions.exportJsonDisabled}
+                    onExportPdf={pdfActions.onExportPdf}
+                    exportPdfDisabled={pdfActions.exportPdfDisabled}
+                  />
+                )}
+              />
+            )}
           />
-          <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New topic</Button>
+          <Button className="min-w-0 flex-1 sm:flex-none" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New topic</Button>
         </div>
       </div>
 
@@ -1319,7 +1337,7 @@ export function TopicStudyPage() {
           <div className="text-base text-muted-foreground sm:text-right">
             <CountLabel count={getEntriesForTopic(data, topic.id).length} singular="question" plural="questions" />
           </div>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          <div className="flex w-full items-center justify-end gap-2">
             <ContextualDataTransfer
               kind="topic"
               data={data}
@@ -1327,8 +1345,25 @@ export function TopicStudyPage() {
               destinationName={currentTopic.name}
               existingCount={getEntriesForTopic(data, currentTopic.id).length}
               onImport={(document, mode) => importTopic(currentTopic.id, document, mode)}
+              renderActions={(jsonActions) => (
+                <PdfExportControl
+                  kind="topic"
+                  data={data}
+                  categoryId={category.id}
+                  topicId={currentTopic.id}
+                  renderActions={(pdfActions) => (
+                    <StudyDataActionsMenu
+                      onImportJson={jsonActions.onImportJson}
+                      onExportJson={jsonActions.onExportJson}
+                      exportJsonDisabled={jsonActions.exportJsonDisabled}
+                      onExportPdf={pdfActions.onExportPdf}
+                      exportPdfDisabled={pdfActions.exportPdfDisabled}
+                    />
+                  )}
+                />
+              )}
             />
-            <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New entry</Button>
+            <Button className="min-w-0 flex-1 sm:flex-none" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New entry</Button>
           </div>
         </div>
       </div>

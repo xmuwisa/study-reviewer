@@ -1,5 +1,5 @@
 import { Download, FileJson2, Upload } from 'lucide-react'
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 
 import {
   AlertDialog,
@@ -240,6 +240,7 @@ export function ContextualDataTransfer({
   destinationName,
   existingCount,
   onImport,
+  renderActions,
 }: {
   kind: 'topic' | 'category'
   data: StudyData
@@ -247,6 +248,11 @@ export function ContextualDataTransfer({
   destinationName: string
   existingCount: number
   onImport: (document: StudyExportDocument, mode: ContextualImportMode) => StudyImportResult
+  renderActions: (actions: {
+    onImportJson: () => void
+    onExportJson: () => void
+    exportJsonDisabled: boolean
+  }) => ReactNode
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [pendingDocument, setPendingDocument] = useState<StudyExportDocument | null>(null)
@@ -340,15 +346,14 @@ export function ContextualDataTransfer({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="contents">
       <Notification notification={notification} onDismiss={() => setNotification(null)} />
       <Input ref={inputRef} className="sr-only" type="file" accept=".json,application/json" aria-label={`Import ${kind} JSON`} onChange={handleFileChange} />
-      <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()}>
-        <Upload aria-hidden="true" data-icon="inline-start" /> Import JSON
-      </Button>
-      <Button type="button" size="sm" variant="outline" disabled={!exportAvailable} onClick={kind === 'category' ? openCategoryExport : exportTopicOrCategory}>
-        <Download aria-hidden="true" data-icon="inline-start" /> Export JSON
-      </Button>
+      {renderActions({
+        onImportJson: () => inputRef.current?.click(),
+        onExportJson: kind === 'category' ? openCategoryExport : exportTopicOrCategory,
+        exportJsonDisabled: !exportAvailable,
+      })}
       <ContextualImportDialog
         document={pendingDocument}
         destinationName={destinationName}
