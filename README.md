@@ -24,11 +24,11 @@ Study Reviewer currently provides:
   backup and replacement restore in Settings
 - Responsive navigation, breadcrumbs, visible focus states, and a persistent
   Pomodoro timer
+- Direct local PDF export for the current topic or selected category topics
 
 Study data remains in the current browser and device through `localStorage`; no
 backend, account, cloud sync, remote API, remote font, or network-loaded core
-asset is required. PDF export and offline installation remain planned
-improvements.
+asset is required. Offline installation remains a planned improvement.
 
 ## Technology
 
