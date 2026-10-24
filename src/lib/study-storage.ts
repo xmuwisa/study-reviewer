@@ -9,6 +9,7 @@ import {
   validateStudyData,
   type ValidationIssue,
 } from '@/lib/study-validation'
+import { createFullBackup, serializeStudyExport } from '@/lib/study-backup'
 
 export type StorageAdapter = Pick<Storage, 'getItem' | 'setItem'>
 
@@ -116,7 +117,7 @@ export function exportStudyData(data: StudyData): ExportStudyDataResult {
   const validation = validateStudyData(data)
   if (!validation.ok) return { ok: false, status: 'invalid', message: 'Study data failed validation.', issues: validation.issues }
 
-  return { ok: true, json: JSON.stringify(validation.data, null, 2) }
+  return { ok: true, json: serializeStudyExport(createFullBackup(validation.data)) }
 }
 
 export function createStudyRepository(storage: StorageAdapter | null = getLocalStorageAdapter()): StudyRepository {

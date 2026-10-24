@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import type { CategoryInput, EntryInput, PomodoroMode, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import { importCategoryExport, importTopicExport, restoreFullBackup, type ContextualImportMode, type StudyExportDocument, type StudyImportResult } from '@/lib/study-backup'
 import {
   createCategory,
   createEntry,
@@ -77,6 +78,20 @@ export function StudyProvider({ children }: { children: ReactNode }) {
     [repository],
   )
 
+  const commitImport = useCallback((result: StudyImportResult): StudyImportResult => {
+    if (!result.ok) return result
+
+    const saveResult = repository.save(result.data)
+    if (!saveResult.ok) {
+      setStorageNotice({ kind: 'error', message: saveResult.message })
+      return { ok: false, message: saveResult.message, issues: saveResult.issues }
+    }
+
+    setData(result.data)
+    setStorageNotice(null)
+    return result
+  }, [repository])
+
   const createCategoryAction = useCallback((input: CategoryInput) => commit(createCategory(data, input)), [commit, data])
   const updateCategoryAction = useCallback(
     (categoryId: RecordId, input: CategoryInput) => commit(updateCategory(data, categoryId, input)),
@@ -104,6 +119,18 @@ export function StudyProvider({ children }: { children: ReactNode }) {
   const openCategory = useCallback((categoryId: RecordId) => commit(markCategoryAccessed(data, categoryId)), [commit, data])
   const openTopic = useCallback((topicId: RecordId) => commit(markTopicAccessed(data, topicId)), [commit, data])
   const updateSettingsAction = useCallback((patch: Parameters<typeof updateSettings>[1]) => commit(updateSettings(data, patch)), [commit, data])
+  const importTopicAction = useCallback(
+    (topicId: RecordId, document: StudyExportDocument, mode: ContextualImportMode) => commitImport(importTopicExport(data, topicId, document, mode)),
+    [commitImport, data],
+  )
+  const importCategoryAction = useCallback(
+    (categoryId: RecordId, document: StudyExportDocument, mode: ContextualImportMode) => commitImport(importCategoryExport(data, categoryId, document, mode)),
+    [commitImport, data],
+  )
+  const restoreFullBackupAction = useCallback(
+    (document: StudyExportDocument) => commitImport(restoreFullBackup(document)),
+    [commitImport],
+  )
   const selectPomodoroModeAction = useCallback((mode: PomodoroMode) => commit(selectPomodoroMode(data, mode)), [commit, data])
   const abandonPomodoroSessionAction = useCallback((mode: PomodoroMode) => commit(abandonPomodoroSession(data, mode)), [commit, data])
   const startPomodoroAction = useCallback(() => commit(startPomodoro(data, Date.now())), [commit, data])
@@ -152,6 +179,9 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       openCategory,
       openTopic,
       updateSettings: updateSettingsAction,
+      importTopic: importTopicAction,
+      importCategory: importCategoryAction,
+      restoreFullBackup: restoreFullBackupAction,
       selectPomodoroMode: selectPomodoroModeAction,
       abandonPomodoroSession: abandonPomodoroSessionAction,
       startPomodoro: startPomodoroAction,
@@ -187,6 +217,9 @@ export function StudyProvider({ children }: { children: ReactNode }) {
       updateTopicAction,
       createTopicAction,
       updateSettingsAction,
+      importTopicAction,
+      importCategoryAction,
+      restoreFullBackupAction,
     ],
   )
 

@@ -25,7 +25,7 @@ import {
   Sun,
   Trash2,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, KeyboardEvent, MouseEvent, PointerEvent, ReactNode, SetStateAction, TransitionEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
@@ -33,6 +33,7 @@ import { CollectionDeleteDialog } from '@/components/study/CollectionDeleteDialo
 import { CollectionFormDialog, type CollectionFormValues } from '@/components/study/CollectionFormDialog'
 import { EntryDeleteDialog } from '@/components/study/EntryDeleteDialog'
 import { EntryFormDialog, type EntryFormValues } from '@/components/study/EntryFormDialog'
+import { ContextualDataTransfer, FullBackupControls } from '@/components/study/StudyDataTransfer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +41,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Notification } from '@/components/ui/notification'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -1099,7 +1101,7 @@ export function CategoriesPage() {
 export function CategoryDetailPage() {
   const { categoryId = '' } = useParams()
   const navigate = useNavigate()
-  const { data, createTopic, updateTopic, deleteTopic, openCategory, openTopic } = useStudyData()
+  const { data, createTopic, updateTopic, deleteTopic, openCategory, openTopic, importCategory } = useStudyData()
   const [searchParams, setSearchParams] = useSearchParams()
   const category = findCategory(data, categoryId)
   const openedCategoryId = useRef<string | null>(null)
@@ -1144,7 +1146,17 @@ export function CategoryDetailPage() {
     <div>
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <PageHeading title={category.name} description={category.description || 'Organize focused study topics in this category.'} />
-        <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New topic</Button>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+          <ContextualDataTransfer
+            kind="category"
+            data={data}
+            destinationId={category.id}
+            destinationName={category.name}
+            existingCount={getTopicsForCategory(data, category.id).length}
+            onImport={(document, mode) => importCategory(category.id, document, mode)}
+          />
+          <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New topic</Button>
+        </div>
       </div>
 
       <div className="mt-7 flex flex-col gap-5">
@@ -1194,7 +1206,7 @@ export function CategoryDetailPage() {
 
 export function TopicStudyPage() {
   const { categoryId = '', topicId = '' } = useParams()
-  const { data, createEntry, updateEntry, deleteEntry, openTopic } = useStudyData()
+  const { data, createEntry, updateEntry, deleteEntry, openTopic, importTopic } = useStudyData()
   const [searchParams, setSearchParams] = useSearchParams()
   const category = findCategory(data, categoryId)
   const topic = findTopic(data, topicId)
@@ -1307,7 +1319,17 @@ export function TopicStudyPage() {
           <div className="text-base text-muted-foreground sm:text-right">
             <CountLabel count={getEntriesForTopic(data, topic.id).length} singular="question" plural="questions" />
           </div>
-          <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New entry</Button>
+          <div className="flex w-full flex-wrap items-center justify-end gap-2">
+            <ContextualDataTransfer
+              kind="topic"
+              data={data}
+              destinationId={currentTopic.id}
+              destinationName={currentTopic.name}
+              existingCount={getEntriesForTopic(data, currentTopic.id).length}
+              onImport={(document, mode) => importTopic(currentTopic.id, document, mode)}
+            />
+            <Button className="w-full sm:w-auto" onClick={showCreateForm}><Plus aria-hidden="true" data-icon="inline-start" /> New entry</Button>
+          </div>
         </div>
       </div>
 
@@ -1380,9 +1402,8 @@ export function TopicStudyPage() {
 
 export function SettingsPage() {
   const location = useLocation()
-  const { data, updateSettings } = useStudyData()
+  const { data, updateSettings, restoreFullBackup } = useStudyData()
   const [saveToast, setSaveToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
-  const [isToastExiting, setIsToastExiting] = useState(false)
   const [activePreview, setActivePreview] = useState<'alarm' | 'ambience' | null>(null)
   const previewAudioRef = useRef<HTMLAudioElement | null>(null)
   const settings = data.settings
@@ -1405,24 +1426,14 @@ export function SettingsPage() {
     return () => window.removeEventListener('pomodoro-alarm-start', stopPreviewForAlarm)
   }, [])
 
-  useEffect(() => {
-    if (!saveToast) return
-
-    setIsToastExiting(false)
-    const exitTimeoutId = window.setTimeout(() => setIsToastExiting(true), 2200)
-    const removeTimeoutId = window.setTimeout(() => setSaveToast(null), 2400)
-    return () => {
-      window.clearTimeout(exitTimeoutId)
-      window.clearTimeout(removeTimeoutId)
-    }
-  }, [saveToast])
-
   function savePreferences(patch: Parameters<typeof updateSettings>[0], message = 'Preference saved locally.') {
     const saved = updateSettings(patch)
     setSaveToast(saved
       ? { kind: 'success', message }
       : { kind: 'error', message: 'This preference could not be saved. Check local storage availability and try again.' })
   }
+
+  const dismissSaveToast = useCallback(() => setSaveToast(null), [])
 
   function restoreDefaults() {
     stopAudioPreview()
@@ -1507,20 +1518,7 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      {saveToast && (
-        <div className="pointer-events-none fixed inset-x-4 bottom-8 z-50 flex justify-start sm:inset-x-auto sm:left-6" aria-live="polite">
-          <p
-            className={cn(
-              'flex max-w-full items-center gap-2 rounded-xl border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-xl',
-              isToastExiting ? 'animate-out fade-out slide-out-to-bottom-2 duration-200' : 'animate-in fade-in slide-in-from-bottom-2 duration-200',
-            )}
-            role={saveToast.kind === 'error' ? 'alert' : 'status'}
-          >
-            {saveToast.kind === 'success' && <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-accent-foreground" />}
-            <span>{saveToast.message}</span>
-          </p>
-        </div>
-      )}
+      <Notification notification={saveToast} onDismiss={dismissSaveToast} />
 
       <div className="mt-8 flex flex-col gap-5">
         <Card className="bg-card/80">
@@ -1792,6 +1790,17 @@ export function SettingsPage() {
                 </Field>
               </div>
             </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/80">
+          <CardHeader className="p-6 pb-4">
+            <SectionLabel>Data management</SectionLabel>
+            <CardTitle className="mt-2 text-2xl">Back up your study space</CardTitle>
+            <CardDescription className="leading-relaxed">Export a complete local backup before moving browsers or restoring a previous version. Full restore is replacement-only and never merges settings or study content.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            <FullBackupControls data={data} onRestore={restoreFullBackup} />
           </CardContent>
         </Card>
 
