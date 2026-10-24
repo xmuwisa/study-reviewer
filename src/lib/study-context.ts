@@ -1,6 +1,7 @@
 import { createContext } from 'react'
 
 import type { CategoryInput, EntryInput, PomodoroMode, RecordId, StudyData, TopicInput } from '@/lib/study-data'
+import type { ContextualImportMode, StudyExportDocument, StudyImportResult } from '@/lib/study-backup'
 import type { StudySettingsPatch } from '@/lib/study-operations'
 
 export type StorageNotice = {
@@ -24,6 +25,9 @@ export type StudyContextValue = {
   openCategory: (categoryId: RecordId) => boolean
   openTopic: (topicId: RecordId) => boolean
   updateSettings: (patch: StudySettingsPatch) => boolean
+  importTopic: (topicId: RecordId, document: StudyExportDocument, mode: ContextualImportMode) => StudyImportResult
+  importCategory: (categoryId: RecordId, document: StudyExportDocument, mode: ContextualImportMode) => StudyImportResult
+  restoreFullBackup: (document: StudyExportDocument) => StudyImportResult
   selectPomodoroMode: (mode: PomodoroMode) => boolean
   abandonPomodoroSession: (mode: PomodoroMode) => boolean
   startPomodoro: () => boolean
